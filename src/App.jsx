@@ -3,6 +3,7 @@ import { DataProvider } from './context/DataContext'
 import { useGoals } from './hooks/useGoals'
 import { useTasks } from './hooks/useTasks'
 import { useHabits } from './hooks/useHabits'
+import Icon from './components/shared/Icon'
 import Dashboard from './components/dashboard/Dashboard'
 import GoalsPage from './components/goals/GoalsPage'
 import TasksPage from './components/tasks/TasksPage'
@@ -10,25 +11,14 @@ import HabitsPage from './components/habits/HabitsPage'
 import SyncPanel from './components/shared/SyncPanel'
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'goals',     label: 'Goals',     icon: '🎯' },
-  { id: 'tasks',     label: 'Tasks',     icon: '✅' },
-  { id: 'habits',    label: 'Habits',    icon: '🔄' },
+  { id: 'dashboard', label: 'Overview', icon: 'dashboard' },
+  { id: 'goals',     label: 'Goals',    icon: 'target' },
+  { id: 'tasks',     label: 'Tasks',    icon: 'check-square' },
+  { id: 'habits',    label: 'Habits',   icon: 'repeat' },
 ]
-
-function NavBadge({ count }) {
-  if (!count) return null
-  return (
-    <span className="ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-      {count}
-    </span>
-  )
-}
 
 function AppShell() {
   const [page, setPage] = useState('dashboard')
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
   const { goals } = useGoals()
   const { tasks } = useTasks()
   const { habits, isCompletedToday } = useHabits()
@@ -39,91 +29,73 @@ function AppShell() {
     habits: habits.filter(h => !isCompletedToday(h)).length || null,
   }
 
-  function navigate(id) { setPage(id); setMobileMenuOpen(false) }
-
-  const navLinks = (
-    <nav className="flex-1 p-4 space-y-1">
-      {NAV_ITEMS.map(item => (
-        <button
-          key={item.id}
-          onClick={() => navigate(item.id)}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
-            page === item.id
-              ? 'bg-blue-50 text-blue-700'
-              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-          }`}
-        >
-          <span className="text-base">{item.icon}</span>
-          {item.label}
-          <NavBadge count={badges[item.id]} />
-        </button>
-      ))}
-    </nav>
-  )
-
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar — desktop */}
-      <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 fixed h-full z-30">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-lg font-bold" style={{ background: '#3b82f6' }}>G</div>
-            <div>
-              <div className="font-bold text-gray-900 text-sm leading-tight">GoalTracker</div>
-              <div className="text-xs text-gray-400">Progress made simple</div>
-            </div>
-          </div>
+
+      {/* ── Desktop sidebar ── */}
+      <aside className="hidden lg:flex flex-col w-60 bg-white border-r border-gray-100 fixed h-full z-30">
+        <div className="px-5 py-6 border-b border-gray-100">
+          <span className="font-bold text-gray-900 tracking-tight">GoalTracker</span>
         </div>
-        {navLinks}
-        <div className="p-4 border-t border-gray-100 space-y-3">
+        <nav className="flex-1 p-3 space-y-0.5">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setPage(item.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
+                page === item.id
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+              }`}
+            >
+              <Icon name={item.icon} size={16} />
+              {item.label}
+              {badges[item.id] && (
+                <span className="ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                  {badges[item.id]}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-gray-100">
           <SyncPanel />
         </div>
       </aside>
 
-      {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm font-bold" style={{ background: '#3b82f6' }}>G</div>
-          <span className="font-bold text-gray-900 text-sm">GoalTracker</span>
-        </div>
-        <button onClick={() => setMobileMenuOpen(v => !v)} className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer text-gray-600">
-          {mobileMenuOpen ? '✕' : '☰'}
-        </button>
-      </div>
-
-      {/* Mobile nav drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-20" style={{ background: 'rgba(0,0,0,0.3)' }} onClick={() => setMobileMenuOpen(false)}>
-          <div className="absolute top-14 left-0 right-0 bg-white border-b border-gray-100 p-4 space-y-2" onClick={e => e.stopPropagation()}>
-            {NAV_ITEMS.map(item => (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
-                  page === item.id ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <span>{item.icon}</span>
-                {item.label}
-                <NavBadge count={badges[item.id]} />
-              </button>
-            ))}
-            <div className="pt-2 border-t border-gray-100">
-              <SyncPanel />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main content */}
-      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0">
-        <div className="max-w-5xl mx-auto p-6">
-          {page === 'dashboard' && <Dashboard onNavigate={navigate} />}
+      {/* ── Main content ── */}
+      <main className="flex-1 lg:ml-60 pb-20 lg:pb-0">
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          {page === 'dashboard' && <Dashboard onNavigate={setPage} />}
           {page === 'goals'     && <GoalsPage />}
           {page === 'tasks'     && <TasksPage />}
           {page === 'habits'    && <HabitsPage />}
         </div>
       </main>
+
+      {/* ── Mobile bottom tab bar ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100">
+        <div className="flex">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setPage(item.id)}
+              className={`flex-1 flex flex-col items-center gap-1 py-3 cursor-pointer transition-colors relative ${
+                page === item.id ? 'text-blue-600' : 'text-gray-400'
+              }`}
+            >
+              <Icon name={item.icon} size={20} />
+              <span className="text-xs font-medium">{item.label}</span>
+              {badges[item.id] && (
+                <span className="absolute top-2 right-1/4 w-4 h-4 flex items-center justify-center text-xs font-bold rounded-full bg-blue-500 text-white leading-none">
+                  {badges[item.id] > 9 ? '9+' : badges[item.id]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
     </div>
   )
 }

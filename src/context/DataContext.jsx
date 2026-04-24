@@ -74,6 +74,7 @@ export function DataProvider({ children }) {
       id, title: data.title, description: data.description || '',
       category: data.category || 'other', targetDate: data.targetDate || null,
       progress: 0, status: 'active', createdAt: new Date().toISOString(),
+      lastCheckIn: null, checkIns: [],
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'goals', id), goal)
     else setGoals(prev => [goal, ...prev])
@@ -96,6 +97,14 @@ export function DataProvider({ children }) {
 
   function completeGoal(id) {
     return updateGoal(id, { status: 'completed', progress: 100 })
+  }
+
+  function checkInGoal(id, progress, note) {
+    const today = toDateString()
+    const goal = goals.find(g => g.id === id)
+    const entry = { date: today, progress, note: note || '' }
+    const checkIns = [...(goal?.checkIns || []), entry]
+    return updateGoal(id, { progress: Math.max(0, Math.min(100, progress)), lastCheckIn: today, checkIns })
   }
 
   // -- Tasks --
@@ -210,7 +219,7 @@ export function DataProvider({ children }) {
       goals, tasks, habits,
       workspaceId, isFirebaseConfigured,
       joinWorkspace,
-      addGoal, updateGoal, deleteGoal, setProgress, completeGoal, CATEGORY_COLORS,
+      addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal, CATEGORY_COLORS,
       addTask, updateTask, deleteTask, toggleTask, getTasksForGoal,
       addHabit, updateHabit, deleteHabit, toggleToday, isCompletedToday, getStreak, getLast7,
     }}>

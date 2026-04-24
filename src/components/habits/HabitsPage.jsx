@@ -5,6 +5,7 @@ import HabitCard from './HabitCard'
 import HabitForm from './HabitForm'
 import Modal from '../shared/Modal'
 import EmptyState from '../shared/EmptyState'
+import Icon from '../shared/Icon'
 
 export default function HabitsPage() {
   const { habits, addHabit, updateHabit, deleteHabit, isCompletedToday } = useHabits()
@@ -15,70 +16,59 @@ export default function HabitsPage() {
   const goalMap = Object.fromEntries(goals.map(g => [g.id, g]))
   const doneToday = habits.filter(h => isCompletedToday(h)).length
   const total = habits.length
+  const pct = total > 0 ? Math.round((doneToday / total) * 100) : 0
 
-  function handleAdd(data) {
-    addHabit(data)
-    setShowForm(false)
-  }
-
-  function handleEdit(data) {
-    updateHabit(editing.id, data)
-    setEditing(null)
-  }
+  function handleAdd(data) { addHabit(data); setShowForm(false) }
+  function handleEdit(data) { updateHabit(editing.id, data); setEditing(null) }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Daily Habits</h1>
-          <p className="text-gray-500 text-sm mt-1">Build consistency with daily routines.</p>
+          <h1 className="text-xl font-bold text-gray-900">Habits</h1>
+          <p className="text-gray-400 text-xs mt-0.5">Daily routines and streaks</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-2"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
           style={{ background: '#3b82f6' }}
         >
-          <span className="text-lg leading-none">+</span> New habit
+          <Icon name="plus" size={15} />
+          New habit
         </button>
       </div>
 
       {total > 0 && (
-        <div className="mb-6 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="text-3xl font-bold text-gray-900">
-            {doneToday}/{total}
-          </div>
+        <div className="mb-5 p-4 bg-white rounded-xl border border-gray-100 flex items-center gap-4">
           <div>
-            <div className="text-sm font-medium text-gray-700">habits done today</div>
-            <div className="text-xs text-gray-400 mt-0.5">
-              {doneToday === total
-                ? '🎉 Perfect day! All habits complete.'
-                : doneToday === 0
-                ? 'Get started — mark your first habit for today!'
-                : `${total - doneToday} remaining for today`}
+            <div className="text-2xl font-bold text-gray-900 tabular-nums">{doneToday}/{total}</div>
+            <div className="text-xs text-gray-400 mt-0.5">habits done today</div>
+          </div>
+          <div className="flex-1">
+            <div className="w-full bg-gray-100 rounded-full h-1.5">
+              <div
+                className="h-1.5 rounded-full bg-green-400 transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              {doneToday === total && total > 0
+                ? 'All done for today'
+                : `${total - doneToday} remaining`}
             </div>
           </div>
-          {total > 0 && (
-            <div className="ml-auto flex-1 max-w-32">
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div
-                  className="h-2 rounded-full bg-green-400 transition-all duration-500"
-                  style={{ width: `${(doneToday / total) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {habits.length === 0 ? (
         <EmptyState
-          icon="🔄"
+          icon="repeat"
           title="No habits yet"
-          subtitle="Add daily habits to build consistent routines and track your streaks."
+          subtitle="Add daily habits to build consistent routines and track streaks."
           action={{ label: 'Add your first habit', onClick: () => setShowForm(true) }}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-3">
           {habits.map(habit => (
             <HabitCard
               key={habit.id}
@@ -96,7 +86,6 @@ export default function HabitsPage() {
           <HabitForm onSubmit={handleAdd} goals={goals} />
         </Modal>
       )}
-
       {editing && (
         <Modal title="Edit habit" onClose={() => setEditing(null)}>
           <HabitForm onSubmit={handleEdit} initial={editing} goals={goals} />

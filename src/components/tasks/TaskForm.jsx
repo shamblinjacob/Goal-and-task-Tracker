@@ -1,18 +1,18 @@
 import { useState } from 'react'
 
 const PRIORITIES = [
-  { value: 'high',   label: '🔴 High' },
-  { value: 'medium', label: '🟡 Medium' },
-  { value: 'low',    label: '🟢 Low' },
+  { value: 'high',   label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low',    label: 'Low' },
 ]
 
 export default function TaskForm({ onSubmit, initial = {}, goals = [] }) {
   const [form, setForm] = useState({
-    title: initial.title || '',
+    title:       initial.title       || '',
     description: initial.description || '',
-    goalId: initial.goalId || '',
-    priority: initial.priority || 'medium',
-    dueDate: initial.dueDate || '',
+    goalId:      initial.goalId      || '',
+    priority:    initial.priority    || 'medium',
+    dueDate:     initial.dueDate     || '',
   })
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
@@ -87,7 +87,7 @@ export default function TaskForm({ onSubmit, initial = {}, goals = [] }) {
       <div className="flex justify-end pt-2">
         <button
           type="submit"
-          className="px-6 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer transition-opacity hover:opacity-90"
+          className="px-6 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
           style={{ background: '#3b82f6' }}
         >
           {initial.title ? 'Save changes' : 'Add task'}

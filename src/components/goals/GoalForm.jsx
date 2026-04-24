@@ -1,20 +1,20 @@
 import { useState } from 'react'
 
 const CATEGORIES = [
-  { value: 'health', label: '💪 Health' },
-  { value: 'career', label: '💼 Career' },
-  { value: 'personal', label: '🌱 Personal' },
-  { value: 'finance', label: '💰 Finance' },
-  { value: 'learning', label: '📚 Learning' },
-  { value: 'other', label: '✨ Other' },
+  { value: 'health',   label: 'Health' },
+  { value: 'career',   label: 'Career' },
+  { value: 'personal', label: 'Personal' },
+  { value: 'finance',  label: 'Finance' },
+  { value: 'learning', label: 'Learning' },
+  { value: 'other',    label: 'Other' },
 ]
 
 export default function GoalForm({ onSubmit, initial = {} }) {
   const [form, setForm] = useState({
-    title: initial.title || '',
+    title:       initial.title       || '',
     description: initial.description || '',
-    category: initial.category || 'personal',
-    targetDate: initial.targetDate || '',
+    category:    initial.category    || 'personal',
+    targetDate:  initial.targetDate  || '',
   })
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
@@ -74,7 +74,7 @@ export default function GoalForm({ onSubmit, initial = {} }) {
       <div className="flex justify-end pt-2">
         <button
           type="submit"
-          className="px-6 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer transition-opacity hover:opacity-90"
+          className="px-6 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
           style={{ background: '#3b82f6' }}
         >
           {initial.title ? 'Save changes' : 'Add goal'}
