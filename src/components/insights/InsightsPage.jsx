@@ -4,6 +4,7 @@ import ProgressBar from '../shared/ProgressBar'
 import GoalProgressChart from './GoalProgressChart'
 import HabitHeatmap from './HabitHeatmap'
 import FinanceSection from './FinanceSection'
+import SyncPanel from '../shared/SyncPanel'
 
 const CATEGORY_META = {
   health:   { label: 'Health',   color: '#10b981' },
@@ -185,6 +186,12 @@ export default function InsightsPage() {
       <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Finance</h2>
         <FinanceSection />
+      </section>
+
+      {/* Sync — visible on mobile only (desktop has it in the sidebar) */}
+      <section className="lg:hidden">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Device sync</h2>
+        <SyncPanel />
       </section>
 
       {/* Empty state for brand new users */}
