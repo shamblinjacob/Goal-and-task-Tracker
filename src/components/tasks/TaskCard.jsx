@@ -7,6 +7,15 @@ const PRIORITY_META = {
   low:    { color: '#10b981', label: 'Low' },
 }
 
+const CATEGORY_META = {
+  health:   { label: 'Health',   color: '#10b981' },
+  career:   { label: 'Career',   color: '#3b82f6' },
+  personal: { label: 'Personal', color: '#8b5cf6' },
+  finance:  { label: 'Finance',  color: '#f59e0b' },
+  learning: { label: 'Learning', color: '#ec4899' },
+  other:    { label: 'Other',    color: '#6b7280' },
+}
+
 function daysUntil(dateStr) {
   if (!dateStr) return null
   return Math.ceil((new Date(dateStr) - new Date()) / 86400000)
@@ -55,6 +64,14 @@ export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, 
             <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: meta.color }} />
             {meta.label}
           </span>
+          {task.category && task.category !== 'other' && (
+            <span
+              className="text-xs font-medium px-1.5 py-0.5 rounded"
+              style={{ color: (CATEGORY_META[task.category] || CATEGORY_META.other).color, background: `${(CATEGORY_META[task.category] || CATEGORY_META.other).color}18` }}
+            >
+              {(CATEGORY_META[task.category] || CATEGORY_META.other).label}
+            </span>
+          )}
           {goalTitle && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium truncate max-w-28">{goalTitle}</span>
           )}

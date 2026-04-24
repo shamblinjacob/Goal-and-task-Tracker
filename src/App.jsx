@@ -4,17 +4,19 @@ import { useGoals } from './hooks/useGoals'
 import { useTasks } from './hooks/useTasks'
 import { useHabits } from './hooks/useHabits'
 import Icon from './components/shared/Icon'
-import TodayPage   from './components/today/TodayPage'
-import GoalsPage   from './components/goals/GoalsPage'
-import TasksPage   from './components/tasks/TasksPage'
-import HabitsPage  from './components/habits/HabitsPage'
-import SyncPanel   from './components/shared/SyncPanel'
+import TodayPage    from './components/today/TodayPage'
+import GoalsPage    from './components/goals/GoalsPage'
+import TasksPage    from './components/tasks/TasksPage'
+import HabitsPage   from './components/habits/HabitsPage'
+import InsightsPage from './components/insights/InsightsPage'
+import SyncPanel    from './components/shared/SyncPanel'
 
 const TABS = [
-  { id: 'today',  label: 'Today',  icon: 'sun' },
-  { id: 'goals',  label: 'Goals',  icon: 'target' },
-  { id: 'tasks',  label: 'Tasks',  icon: 'check-square' },
-  { id: 'habits', label: 'Habits', icon: 'repeat' },
+  { id: 'today',    label: 'Today',    icon: 'sun' },
+  { id: 'goals',    label: 'Goals',    icon: 'target' },
+  { id: 'tasks',    label: 'Tasks',    icon: 'check-square' },
+  { id: 'habits',   label: 'Habits',   icon: 'repeat' },
+  { id: 'insights', label: 'Insights', icon: 'bar-chart' },
 ]
 
 function AppShell() {
@@ -103,10 +105,11 @@ function AppShell() {
         onTouchEnd={onMainTouchEnd}
       >
         <div className="max-w-2xl mx-auto px-4 py-6">
-          {page === 'today'  && <TodayPage  onNavigate={setPage} />}
-          {page === 'goals'  && <GoalsPage  />}
-          {page === 'tasks'  && <TasksPage  />}
-          {page === 'habits' && <HabitsPage />}
+          {page === 'today'    && <TodayPage onNavigate={setPage} />}
+          {page === 'goals'    && <GoalsPage />}
+          {page === 'tasks'    && <TasksPage />}
+          {page === 'habits'   && <HabitsPage />}
+          {page === 'insights' && <InsightsPage />}
         </div>
       </main>
 

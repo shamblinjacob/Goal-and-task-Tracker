@@ -36,14 +36,16 @@ export function DataProvider({ children }) {
     return id
   })
 
-  const [goals,  setGoals]  = useState(() => isFirebaseConfigured ? [] : readLocal('goals',  []))
-  const [tasks,  setTasks]  = useState(() => isFirebaseConfigured ? [] : readLocal('tasks',  []))
-  const [habits, setHabits] = useState(() => isFirebaseConfigured ? [] : readLocal('habits', []))
+  const [goals,    setGoals]    = useState(() => isFirebaseConfigured ? [] : readLocal('goals',    []))
+  const [tasks,    setTasks]    = useState(() => isFirebaseConfigured ? [] : readLocal('tasks',    []))
+  const [habits,   setHabits]   = useState(() => isFirebaseConfigured ? [] : readLocal('habits',   []))
+  const [accounts, setAccounts] = useState(() => isFirebaseConfigured ? [] : readLocal('accounts', []))
 
   // Persist to localStorage when not using Firebase
-  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('goals',  JSON.stringify(goals))  }, [goals])
-  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('tasks',  JSON.stringify(tasks))  }, [tasks])
-  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('habits', JSON.stringify(habits)) }, [habits])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('goals',    JSON.stringify(goals))    }, [goals])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('tasks',    JSON.stringify(tasks))    }, [tasks])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('habits',   JSON.stringify(habits))   }, [habits])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('accounts', JSON.stringify(accounts)) }, [accounts])
 
   // Firebase real-time listeners
   useEffect(() => {
@@ -53,9 +55,10 @@ export function DataProvider({ children }) {
     const toList = snap => snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(byDate)
 
     const unsubs = [
-      onSnapshot(collection(db, 'workspaces', workspaceId, 'goals'),  snap => setGoals(toList(snap))),
-      onSnapshot(collection(db, 'workspaces', workspaceId, 'tasks'),  snap => setTasks(toList(snap))),
-      onSnapshot(collection(db, 'workspaces', workspaceId, 'habits'), snap => setHabits(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'goals'),    snap => setGoals(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'tasks'),    snap => setTasks(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'habits'),   snap => setHabits(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'accounts'), snap => setAccounts(toList(snap))),
     ]
     return () => unsubs.forEach(u => u())
   }, [workspaceId])
@@ -122,6 +125,7 @@ export function DataProvider({ children }) {
       id, title: data.title, description: data.description || '',
       goalId: data.goalId || null, priority: data.priority || 'medium',
       dueDate: data.dueDate || null, completed: false, completedAt: null,
+      category: data.category || 'other',
       createdAt: new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'tasks', id), task)
@@ -193,6 +197,47 @@ export function DataProvider({ children }) {
   function archiveHabit(id) { return updateHabit(id, { archived: true }) }
   function restoreHabit(id) { return updateHabit(id, { archived: false }) }
 
+  // -- Accounts (manual financial tracking) --
+  async function addAccount(data) {
+    const id = crypto.randomUUID()
+    const today = toDateString()
+    const account = {
+      id,
+      name: data.name,
+      type: data.type || 'checking',           // checking | savings | investment | debt | other
+      balance: Number(data.balance) || 0,
+      balanceHistory: [{ date: today, balance: Number(data.balance) || 0 }],
+      createdAt: new Date().toISOString(),
+    }
+    if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'accounts', id), account)
+    else setAccounts(prev => [account, ...prev])
+    return id
+  }
+
+  async function updateAccountBalance(id, newBalance) {
+    const account = accounts.find(a => a.id === id)
+    if (!account) return
+    const today = toDateString()
+    const bal = Number(newBalance) || 0
+    const history = [...(account.balanceHistory || [])]
+    const idx = history.findIndex(h => h.date === today)
+    if (idx >= 0) history[idx] = { date: today, balance: bal }
+    else history.push({ date: today, balance: bal })
+    const updates = { balance: bal, balanceHistory: history }
+    if (isFirebaseConfigured) await updateDoc(doc(db, 'workspaces', workspaceId, 'accounts', id), updates)
+    else setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a))
+  }
+
+  async function updateAccount(id, updates) {
+    if (isFirebaseConfigured) await updateDoc(doc(db, 'workspaces', workspaceId, 'accounts', id), updates)
+    else setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a))
+  }
+
+  async function deleteAccount(id) {
+    if (isFirebaseConfigured) await deleteDoc(doc(db, 'workspaces', workspaceId, 'accounts', id))
+    else setAccounts(prev => prev.filter(a => a.id !== id))
+  }
+
   function isCompletedToday(habit) {
     return habit.completions.includes(toDateString())
   }
@@ -230,7 +275,7 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{
-      goals, tasks, habits,
+      goals, tasks, habits, accounts,
       workspaceId, isFirebaseConfigured,
       joinWorkspace,
       addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal,
@@ -239,6 +284,7 @@ export function DataProvider({ children }) {
       archiveTask, restoreTask,
       addHabit, updateHabit, deleteHabit, toggleToday, isCompletedToday, getStreak, getLast7,
       archiveHabit, restoreHabit,
+      addAccount, updateAccount, updateAccountBalance, deleteAccount,
     }}>
       {children}
     </DataContext.Provider>
