@@ -259,14 +259,16 @@ export function DataProvider({ children }) {
 
   // -- Accounts (manual financial tracking) --
   async function addAccount(data) {
-    const id = crypto.randomUUID()
+    const id    = crypto.randomUUID()
     const today = toDateString()
+    const bal   = Number(data.balance) || 0
     const account = {
       id,
-      name: data.name,
-      type: data.type || 'checking',           // checking | savings | investment | debt | other
-      balance: Number(data.balance) || 0,
-      balanceHistory: [{ date: today, balance: Number(data.balance) || 0 }],
+      name:           data.name,
+      type:           data.type || 'checking',
+      balance:        bal,
+      openingBalance: bal,                          // used for transaction-driven balance computation
+      balanceHistory: [{ date: today, balance: bal }],
       createdAt: new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'accounts', id), account)
@@ -306,10 +308,12 @@ export function DataProvider({ children }) {
       date:        data.date        || toDateString(),
       description: data.description || '',
       amount:      Math.abs(Number(data.amount)) || 0,
-      type:        data.type        || 'expense',
+      type:        data.type        || 'expense',   // 'expense' | 'income' | 'transfer'
       category:    data.category    || 'other',
       recurring:   data.recurring   || false,
       note:        data.note        || '',
+      accountId:   data.accountId   || null,        // which account is debited/credited
+      toAccountId: data.toAccountId || null,        // destination for transfers
       createdAt:   new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'transactions', id), tx)
@@ -351,6 +355,18 @@ export function DataProvider({ children }) {
 
   async function updateHolding(id, updates) {
     const patch = { ...updates, lastUpdated: toDateString() }
+
+    // Persist a daily value snapshot whenever currentValue changes
+    if (updates.currentValue !== undefined) {
+      const holding = holdings.find(h => h.id === id)
+      const today   = toDateString()
+      const history = [...(holding?.valueHistory || [])]
+      const idx     = history.findIndex(e => e.date === today)
+      const entry   = { date: today, value: Number(updates.currentValue) }
+      if (idx >= 0) history[idx] = entry; else history.push(entry)
+      patch.valueHistory = history
+    }
+
     if (isFirebaseConfigured) await updateDoc(doc(db, 'workspaces', workspaceId, 'holdings', id), patch)
     else setHoldings(prev => prev.map(h => h.id === id ? { ...h, ...patch } : h))
   }

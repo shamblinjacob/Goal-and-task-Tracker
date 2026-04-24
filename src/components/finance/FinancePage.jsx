@@ -1,11 +1,13 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useDataContext } from '../../context/DataContext'
-import { computeHoldingStats } from '../../utils/financeUtils'
+import { computeHoldingStats, computeAccountBalance } from '../../utils/financeUtils'
 import Icon from '../shared/Icon'
 import Modal from '../shared/Modal'
 import ProgressBar from '../shared/ProgressBar'
 import SpendingDonut from './SpendingDonut'
 import CashFlowChart from './CashFlowChart'
+import NetWorthChart from './NetWorthChart'
+import AccountSparkline from './AccountSparkline'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -76,7 +78,7 @@ const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm f
 
 // ── Transaction Form ──────────────────────────────────────────────────────────
 
-function TransactionForm({ initial = {}, onSubmit }) {
+function TransactionForm({ initial = {}, onSubmit, accounts = [] }) {
   const today = new Date().toISOString().split('T')[0]
   const [form, setForm] = useState({
     type:        initial.type        || 'expense',
@@ -87,13 +89,17 @@ function TransactionForm({ initial = {}, onSubmit }) {
     note:        initial.note        || '',
     recurring:   initial.recurring   || false,
     recurFreq:   (initial.recurring && initial.recurring.freq) || 'monthly',
+    accountId:   initial.accountId   || '',
+    toAccountId: initial.toAccountId || '',
   })
 
   function set(f, v) {
     setForm(prev => {
       const next = { ...prev, [f]: v }
-      // Reset category when type changes
-      if (f === 'type') next.category = v === 'income' ? 'paycheck' : 'food'
+      if (f === 'type') {
+        next.category    = v === 'income' ? 'paycheck' : 'food'
+        next.toAccountId = ''
+      }
       return next
     })
   }
@@ -101,10 +107,13 @@ function TransactionForm({ initial = {}, onSubmit }) {
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.description.trim() || !form.amount) return
+    if (form.type === 'transfer' && !form.toAccountId) return
     const data = {
       ...form,
-      amount:    Math.abs(Number(form.amount)),
-      recurring: form.recurring ? { freq: form.recurFreq } : false,
+      amount:      Math.abs(Number(form.amount)),
+      recurring:   form.recurring ? { freq: form.recurFreq } : false,
+      accountId:   form.accountId   || null,
+      toAccountId: form.toAccountId || null,
     }
     delete data.recurFreq
     onSubmit(data)
@@ -112,13 +121,16 @@ function TransactionForm({ initial = {}, onSubmit }) {
 
   const cats = form.type === 'income' ? INCOME_CATS : EXPENSE_CATS
 
+  const assetAccounts = accounts.filter(a => a.type !== 'debt')
+  const debtAccounts  = accounts.filter(a => a.type === 'debt')
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Type toggle */}
-      <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
-        {['expense', 'income'].map(t => (
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+        {['expense', 'income', 'transfer'].map(t => (
           <button key={t} type="button" onClick={() => set('type', t)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors capitalize ${form.type === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors capitalize ${form.type === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
             {t}
           </button>
         ))}
@@ -139,42 +151,81 @@ function TransactionForm({ initial = {}, onSubmit }) {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
         <input type="text" value={form.description} onChange={e => set('description', e.target.value)}
-          placeholder={form.type === 'income' ? 'e.g. Bi-weekly paycheck' : 'e.g. Whole Foods'}
+          placeholder={
+            form.type === 'income'   ? 'e.g. Bi-weekly paycheck' :
+            form.type === 'transfer' ? 'e.g. Discover CC payment' :
+            'e.g. Whole Foods'
+          }
           className={inputCls} required />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-          <select value={form.category} onChange={e => set('category', e.target.value)} className={inputCls + ' bg-white'}>
-            {cats.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+      {/* Account linking */}
+      {form.type === 'transfer' ? (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">From account *</label>
+            <select value={form.accountId} onChange={e => set('accountId', e.target.value)} className={inputCls + ' bg-white'} required>
+              <option value="">Select account</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">To account *</label>
+            <select value={form.toAccountId} onChange={e => set('toAccountId', e.target.value)} className={inputCls + ' bg-white'} required>
+              <option value="">Select account</option>
+              {accounts.filter(a => a.id !== form.accountId).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
-          <input type="text" value={form.note} onChange={e => set('note', e.target.value)} placeholder="Optional" className={inputCls} />
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Affects account <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <select value={form.accountId} onChange={e => set('accountId', e.target.value)} className={inputCls + ' bg-white'}>
+              <option value="">None</option>
+              {form.type === 'expense'
+                ? accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)
+                : assetAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)
+              }
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select value={form.category} onChange={e => set('category', e.target.value)} className={inputCls + ' bg-white'}>
+              {cats.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Recurring */}
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={!!form.recurring} onChange={e => set('recurring', e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer" />
-          <span className="text-sm text-gray-700">Recurring</span>
-        </label>
-        {form.recurring && (
-          <select value={form.recurFreq} onChange={e => set('recurFreq', e.target.value)}
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-            {RECUR_FREQS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-          </select>
-        )}
-      </div>
+      {form.type !== 'transfer' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
+            <input type="text" value={form.note} onChange={e => set('note', e.target.value)} placeholder="Optional" className={inputCls} />
+          </div>
+          <div className="flex items-end pb-0.5">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!form.recurring} onChange={e => set('recurring', e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer" />
+              <span className="text-sm text-gray-700">Recurring</span>
+            </label>
+            {form.recurring && (
+              <select value={form.recurFreq} onChange={e => set('recurFreq', e.target.value)}
+                className="ml-2 flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+                {RECUR_FREQS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+              </select>
+            )}
+          </div>
+        </div>
+      )}
 
       <button type="submit"
         className="w-full py-2.5 rounded-xl text-sm font-semibold text-white cursor-pointer hover:opacity-90"
-        style={{ background: '#3b82f6' }}>
-        {initial.description ? 'Save changes' : `Add ${form.type}`}
+        style={{ background: form.type === 'transfer' ? '#8b5cf6' : '#3b82f6' }}>
+        {initial.description ? 'Save changes' : form.type === 'transfer' ? 'Record transfer' : `Add ${form.type}`}
       </button>
     </form>
   )
@@ -526,46 +577,39 @@ function HoldingRow({ holding, onEdit, onDelete, livePrice }) {
 
 // ── Account Balance Row ───────────────────────────────────────────────────────
 
-function AccountRow({ account, onEdit, onDelete }) {
-  const { updateAccountBalance } = useDataContext()
-  const [editing, setEditing]    = useState(false)
-  const [val, setVal]            = useState(account.balance)
-  const meta   = ACCOUNT_TYPES.find(t => t.value === account.type) || ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1]
-  const isDebt = account.type === 'debt'
-
-  function submit(e) {
-    e.preventDefault()
-    updateAccountBalance(account.id, Number(val))
-    setEditing(false)
-  }
+function AccountRow({ account, transactions, onEdit, onDelete, onMakePayment }) {
+  const meta    = ACCOUNT_TYPES.find(t => t.value === account.type) || ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1]
+  const isDebt  = account.type === 'debt'
+  const balance = computeAccountBalance(account, transactions)
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
-      <div className="w-2 h-8 rounded-full shrink-0" style={{ background: meta.color }} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 truncate">{account.name}</p>
-        <p className="text-xs text-gray-400">{meta.label}</p>
-      </div>
-      {editing ? (
-        <form onSubmit={submit} className="flex items-center gap-1">
-          <input type="number" step="0.01" value={val} onChange={e => setVal(e.target.value)} autoFocus
-            className="w-24 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400 tabular-nums text-right" />
-          <button type="submit" className="text-xs text-blue-600 font-medium cursor-pointer">Save</button>
-          <button type="button" onClick={() => setEditing(false)} className="text-xs text-gray-400 cursor-pointer">×</button>
-        </form>
-      ) : (
-        <button onClick={() => { setEditing(true); setVal(account.balance) }}
-          className={`text-sm font-semibold tabular-nums cursor-pointer hover:opacity-70 ${isDebt ? 'text-red-500' : 'text-gray-900'}`}>
-          {isDebt ? '−' : ''}{fmtK(Math.abs(account.balance))}
-        </button>
-      )}
-      <div className="flex gap-0.5 shrink-0">
-        <button onClick={() => onEdit(account)} className="p-1.5 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 cursor-pointer">
-          <Icon name="edit" size={13} />
-        </button>
-        <button onClick={() => onDelete(account.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 cursor-pointer">
-          <Icon name="trash" size={13} />
-        </button>
+    <div className="border-b border-gray-50 last:border-0 py-3">
+      <div className="flex items-center gap-3">
+        <div className="w-2 h-8 rounded-full shrink-0" style={{ background: meta.color }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-800 truncate">{account.name}</p>
+          <p className="text-xs text-gray-400">{meta.label}</p>
+        </div>
+        <div className="text-right mr-1">
+          <div className={`text-sm font-semibold tabular-nums ${isDebt ? 'text-red-500' : 'text-gray-900'}`}>
+            {isDebt ? '−' : ''}{fmtK(Math.abs(balance))}
+          </div>
+          <AccountSparkline account={account} transactions={transactions} width={80} height={24} />
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {isDebt && balance > 0 && (
+            <button onClick={() => onMakePayment(account)}
+              className="text-xs px-2 py-1 rounded-lg bg-green-50 text-green-700 font-medium hover:bg-green-100 cursor-pointer">
+              Pay
+            </button>
+          )}
+          <button onClick={() => onEdit(account)} className="p-1.5 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 cursor-pointer">
+            <Icon name="edit" size={13} />
+          </button>
+          <button onClick={() => onDelete(account.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 cursor-pointer">
+            <Icon name="trash" size={13} />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -592,6 +636,7 @@ export default function FinancePage() {
   const [refreshing,   setRefreshing]   = useState(false)
   const [priceError,   setPriceError]   = useState('')
   const [priceTs,      setPriceTs]      = useState(null)
+  const [paymentAcct,  setPaymentAcct]  = useState(null)
 
   const month = thisMonth()
 
@@ -658,8 +703,8 @@ export default function FinancePage() {
     return groups
   }, [holdingStats])
 
-  const assets   = accounts.filter(a => a.type !== 'debt').reduce((s, a) => s + a.balance, 0)
-  const debts    = accounts.filter(a => a.type === 'debt').reduce((s, a) => s + Math.abs(a.balance), 0)
+  const assets   = useMemo(() => accounts.filter(a => a.type !== 'debt').reduce((s, a) => s + computeAccountBalance(a, transactions), 0), [accounts, transactions])
+  const debts    = useMemo(() => accounts.filter(a => a.type === 'debt').reduce((s, a) => s + Math.abs(computeAccountBalance(a, transactions)), 0), [accounts, transactions])
   const netWorth = assets + totalInvested - debts
 
   const filteredTxs = useMemo(() => {
@@ -684,6 +729,7 @@ export default function FinancePage() {
     if (Number(data.balance) !== editingAcct.balance) updateAccountBalance(editingAcct.id, data.balance)
     setEditingAcct(null)
   }
+  function handlePayment(data)  { addTransaction(data); setPaymentAcct(null) }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -739,6 +785,16 @@ export default function FinancePage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Net worth trend */}
+      {(accounts.length > 0 || holdings.length > 0) && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Net worth trend</h2>
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
+            <NetWorthChart accounts={accounts} holdings={holdings} transactions={transactions} />
+          </div>
+        </section>
       )}
 
       {/* Spending breakdown */}
@@ -942,7 +998,7 @@ export default function FinancePage() {
           ) : (
             <>
               {accounts.map(a => (
-                <AccountRow key={a.id} account={a} onEdit={setEditingAcct} onDelete={deleteAccount} />
+                <AccountRow key={a.id} account={a} transactions={transactions} onEdit={setEditingAcct} onDelete={deleteAccount} onMakePayment={setPaymentAcct} />
               ))}
               <div className="flex justify-between text-xs pt-3 mt-1 border-t border-gray-50">
                 <span className="text-gray-400">Net (excl. investments)</span>
@@ -950,7 +1006,7 @@ export default function FinancePage() {
                   {fmtK(assets - debts)}
                 </span>
               </div>
-              <p className="text-xs text-gray-400 mt-2">Click a balance to update it.</p>
+              <p className="text-xs text-gray-400 mt-2">Balances update automatically from linked transactions. Use the edit icon to adjust the opening balance.</p>
             </>
           )}
         </div>
@@ -965,8 +1021,9 @@ export default function FinancePage() {
       </div>
 
       {/* Modals */}
-      {showTxForm   && <Modal title="Add transaction" onClose={() => setShowTxForm(false)}><TransactionForm onSubmit={handleAddTx} /></Modal>}
-      {editingTx    && <Modal title="Edit transaction" onClose={() => setEditingTx(null)}><TransactionForm initial={editingTx} onSubmit={handleEditTx} /></Modal>}
+      {showTxForm   && <Modal title="Add transaction" onClose={() => setShowTxForm(false)}><TransactionForm onSubmit={handleAddTx} accounts={accounts} /></Modal>}
+      {editingTx    && <Modal title="Edit transaction" onClose={() => setEditingTx(null)}><TransactionForm initial={editingTx} onSubmit={handleEditTx} accounts={accounts} /></Modal>}
+      {paymentAcct  && <Modal title={`Pay ${paymentAcct.name}`} onClose={() => setPaymentAcct(null)}><TransactionForm initial={{ type: 'transfer', toAccountId: paymentAcct.id, description: `${paymentAcct.name} payment` }} onSubmit={handlePayment} accounts={accounts} /></Modal>}
       {showHoldForm && <Modal title="Add holding" onClose={() => setShowHoldForm(false)}><HoldingForm onSubmit={handleAddHold} /></Modal>}
       {editingHold  && <Modal title="Edit holding" onClose={() => setEditingHold(null)}><HoldingForm initial={editingHold} onSubmit={handleEditHold} /></Modal>}
       {showAcctForm && <Modal title="Add account" onClose={() => setShowAcctForm(false)}><AccountForm onSubmit={handleAddAcct} /></Modal>}
