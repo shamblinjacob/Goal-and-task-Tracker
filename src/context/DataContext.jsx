@@ -332,14 +332,17 @@ export function DataProvider({ children }) {
     const id = crypto.randomUUID()
     const holding = {
       id,
-      ticker:       (data.ticker || '').toUpperCase(),
-      name:         data.name         || data.ticker || '',
-      shares:       Number(data.shares)       || 0,
-      costBasis:    Number(data.costBasis)    || 0,
-      currentValue: Number(data.currentValue) || 0,
-      accountType:  data.accountType  || 'taxable',
-      lastUpdated:  toDateString(),
-      createdAt:    new Date().toISOString(),
+      ticker:         (data.ticker || '').toUpperCase(),
+      name:           data.name         || data.ticker || '',
+      shares:         Number(data.shares)       || 0,
+      costBasis:      Number(data.costBasis)    || 0,
+      currentValue:   Number(data.currentValue) || 0,
+      currentPrice:   null,
+      priceUpdatedAt: null,
+      accountType:    data.accountType  || 'taxable',
+      trades:         [],
+      lastUpdated:    toDateString(),
+      createdAt:      new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'holdings', id), holding)
     else setHoldings(prev => [holding, ...prev])
@@ -355,6 +358,28 @@ export function DataProvider({ children }) {
   async function deleteHolding(id) {
     if (isFirebaseConfigured) await deleteDoc(doc(db, 'workspaces', workspaceId, 'holdings', id))
     else setHoldings(prev => prev.filter(h => h.id !== id))
+  }
+
+  async function addTrade(holdingId, tradeData) {
+    const holding = holdings.find(h => h.id === holdingId)
+    if (!holding) return
+    const trade = {
+      id:            crypto.randomUUID(),
+      date:          tradeData.date || toDateString(),
+      type:          tradeData.type,           // 'buy' | 'sell'
+      shares:        Number(tradeData.shares),
+      pricePerShare: Number(tradeData.pricePerShare),
+      fee:           Number(tradeData.fee) || 0,
+    }
+    const trades = [...(holding.trades || []), trade]
+    return updateHolding(holdingId, { trades })
+  }
+
+  async function deleteTrade(holdingId, tradeId) {
+    const holding = holdings.find(h => h.id === holdingId)
+    if (!holding) return
+    const trades = (holding.trades || []).filter(t => t.id !== tradeId)
+    return updateHolding(holdingId, { trades })
   }
 
   function isCompletedToday(habit) {
@@ -406,7 +431,7 @@ export function DataProvider({ children }) {
       archiveHabit, restoreHabit,
       addAccount, updateAccount, updateAccountBalance, deleteAccount,
       addTransaction, updateTransaction, deleteTransaction,
-      addHolding, updateHolding, deleteHolding,
+      addHolding, updateHolding, deleteHolding, addTrade, deleteTrade,
     }}>
       {children}
     </DataContext.Provider>
