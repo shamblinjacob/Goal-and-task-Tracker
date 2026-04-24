@@ -73,6 +73,23 @@ export function DataProvider({ children }) {
   // -- Goals --
   async function addGoal(data) {
     const id = crypto.randomUUID()
+
+    if (data.type === 'weekly') {
+      const goal = {
+        id, title: data.title, description: data.description || '',
+        category: data.category || 'health',
+        type: 'weekly',
+        target: Number(data.target) || 1,
+        unit: data.unit || 'sessions',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        entries: [],
+      }
+      if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'goals', id), goal)
+      else setGoals(prev => [goal, ...prev])
+      return id
+    }
+
     const goal = {
       id, title: data.title, description: data.description || '',
       category: data.category || 'other', targetDate: data.targetDate || null,
@@ -89,6 +106,19 @@ export function DataProvider({ children }) {
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'goals', id), goal)
     else setGoals(prev => [goal, ...prev])
     return id
+  }
+
+  async function logWeeklyEntry(goalId, value, note = '') {
+    const goal = goals.find(g => g.id === goalId)
+    if (!goal) return
+    const entry = { id: crypto.randomUUID(), date: toDateString(), value: Number(value), note }
+    return updateGoal(goalId, { entries: [...(goal.entries || []), entry] })
+  }
+
+  async function deleteWeeklyEntry(goalId, entryId) {
+    const goal = goals.find(g => g.id === goalId)
+    if (!goal) return
+    return updateGoal(goalId, { entries: (goal.entries || []).filter(e => e.id !== entryId) })
   }
 
   async function updateGoal(id, updates) {
@@ -303,7 +333,7 @@ export function DataProvider({ children }) {
       workspaceId, isFirebaseConfigured,
       joinWorkspace,
       addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal,
-      toggleMilestone,
+      toggleMilestone, logWeeklyEntry, deleteWeeklyEntry,
       archiveGoal, restoreGoal, CATEGORY_COLORS,
       addTask, updateTask, deleteTask, toggleTask, getTasksForGoal,
       archiveTask, restoreTask,

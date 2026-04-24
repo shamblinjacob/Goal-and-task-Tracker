@@ -7,6 +7,7 @@ export function useGoals() {
     addGoal: ctx.addGoal, updateGoal: ctx.updateGoal, deleteGoal: ctx.deleteGoal,
     setProgress: ctx.setProgress, completeGoal: ctx.completeGoal, checkInGoal: ctx.checkInGoal,
     toggleMilestone: ctx.toggleMilestone,
+    logWeeklyEntry: ctx.logWeeklyEntry, deleteWeeklyEntry: ctx.deleteWeeklyEntry,
     archiveGoal: ctx.archiveGoal, restoreGoal: ctx.restoreGoal,
     CATEGORY_COLORS,
   }

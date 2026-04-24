@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGoals } from '../../hooks/useGoals'
 import { useTasks } from '../../hooks/useTasks'
 import GoalCard from './GoalCard'
+import WeeklyGoalCard from './WeeklyGoalCard'
 import GoalForm from './GoalForm'
 import Modal from '../shared/Modal'
 import EmptyState from '../shared/EmptyState'
@@ -20,17 +21,21 @@ export default function GoalsPage() {
   const [editing, setEditing]   = useState(null)
   const [filter, setFilter]     = useState('active')
 
-  const filtered = goals.filter(g => g.status === filter)
+  const filtered       = goals.filter(g => g.status === filter)
+  const weeklyGoals    = filtered.filter(g => g.type === 'weekly')
+  const regularGoals   = filtered.filter(g => g.type !== 'weekly')
 
   function handleAdd(data)  { addGoal(data); setShowForm(false) }
   function handleEdit(data) { updateGoal(editing.id, data); setEditing(null) }
+
+  const isEmpty = filtered.length === 0
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Goals</h1>
-          <p className="text-gray-400 text-xs mt-0.5">Long-term targets and progress</p>
+          <p className="text-gray-400 text-xs mt-0.5">Long-term targets and weekly recurring goals</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -59,31 +64,60 @@ export default function GoalsPage() {
         })}
       </div>
 
-      {filtered.length === 0 ? (
+      {isEmpty ? (
         <EmptyState
           icon="target"
           title={filter === 'archived' ? 'Nothing archived' : filter === 'completed' ? 'No completed goals yet' : 'No goals yet'}
-          subtitle={filter === 'archived' ? 'Archived goals appear here.' : filter === 'completed' ? 'Completed goals will appear here.' : 'Add your first long-term goal to get started.'}
+          subtitle={filter === 'archived' ? 'Archived goals appear here.' : filter === 'completed' ? 'Completed goals will appear here.' : 'Add a long-term goal or a weekly recurring goal to get started.'}
           action={filter === 'active' ? { label: 'Add your first goal', onClick: () => setShowForm(true) } : undefined}
         />
       ) : (
-        <div className="space-y-3">
-          {filtered.map(goal => {
-            const goalTasks = getTasksForGoal(goal.id)
-            return (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                taskCount={goalTasks.length}
-                completedTaskCount={goalTasks.filter(t => t.completed).length}
-                onEdit={setEditing}
-                onDelete={deleteGoal}
-                onSetProgress={setProgress}
-                onComplete={completeGoal}
-                onArchive={archiveGoal}
-              />
-            )
-          })}
+        <div className="space-y-5">
+
+          {/* Weekly recurring goals */}
+          {weeklyGoals.length > 0 && (
+            <section>
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Weekly recurring</h2>
+              <div className="space-y-3">
+                {weeklyGoals.map(goal => (
+                  <WeeklyGoalCard
+                    key={goal.id}
+                    goal={goal}
+                    onEdit={filter === 'active' ? setEditing : undefined}
+                    onArchive={filter === 'active' ? archiveGoal : undefined}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Long-term goals */}
+          {regularGoals.length > 0 && (
+            <section>
+              {weeklyGoals.length > 0 && (
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Long-term goals</h2>
+              )}
+              <div className="space-y-3">
+                {regularGoals.map(goal => {
+                  const goalTasks = getTasksForGoal(goal.id)
+                  return (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      taskCount={goalTasks.length}
+                      completedTaskCount={goalTasks.filter(t => t.completed).length}
+                      onEdit={setEditing}
+                      onDelete={deleteGoal}
+                      onSetProgress={setProgress}
+                      onComplete={completeGoal}
+                      onArchive={archiveGoal}
+                    />
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
           {filter === 'archived' && filtered.length > 0 && (
             <div className="text-center pt-2">
               <p className="text-xs text-gray-400 mb-2">Restore a goal to make it active again</p>

@@ -5,6 +5,7 @@ import SwipeableItem from '../shared/SwipeableItem'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
 import HabitCheckIn from './HabitCheckIn'
+import WeeklyGoalCard from '../goals/WeeklyGoalCard'
 
 function greeting() {
   const h = new Date().getHours()
@@ -106,7 +107,8 @@ export default function TodayPage({ onNavigate }) {
   const highPriTasks   = tasks.filter(t => !t.completed && !t.archived && t.priority === 'high' && (!t.dueDate || t.dueDate > today))
   const focusTasks     = [...overdueTasks, ...dueTodayTasks, ...highPriTasks]
 
-  const activeGoals    = goals.filter(g => g.status === 'active' && g.description)
+  const weeklyGoals    = goals.filter(g => g.status === 'active' && g.type === 'weekly')
+  const activeGoals    = goals.filter(g => g.status === 'active' && g.type !== 'weekly' && g.description)
   const habitPct       = activeHabits.length ? Math.round((doneHabits.length / activeHabits.length) * 100) : 0
 
   return (
@@ -129,6 +131,18 @@ export default function TodayPage({ onNavigate }) {
             <p className="text-xs text-green-600 font-medium mt-2">All habits done today — great work!</p>
           )}
         </div>
+      )}
+
+      {/* Weekly recurring goals */}
+      {weeklyGoals.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">This week</h2>
+          <div className="space-y-3">
+            {weeklyGoals.map(goal => (
+              <WeeklyGoalCard key={goal.id} goal={goal} />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* AI Check-in */}
@@ -248,7 +262,7 @@ export default function TodayPage({ onNavigate }) {
       )}
 
       {/* Empty state */}
-      {activeHabits.length === 0 && focusTasks.length === 0 && activeGoals.length === 0 && (
+      {activeHabits.length === 0 && focusTasks.length === 0 && activeGoals.length === 0 && weeklyGoals.length === 0 && (
         <div className="text-center py-12">
           <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
             <Icon name="sun" size={26} className="text-blue-400" />
