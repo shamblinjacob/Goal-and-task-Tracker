@@ -9,6 +9,7 @@ import GoalsPage    from './components/goals/GoalsPage'
 import TasksPage    from './components/tasks/TasksPage'
 import HabitsPage   from './components/habits/HabitsPage'
 import InsightsPage from './components/insights/InsightsPage'
+import FinancePage  from './components/finance/FinancePage'
 import SyncPanel    from './components/shared/SyncPanel'
 
 const TABS = [
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'goals',    label: 'Goals',    icon: 'target' },
   { id: 'tasks',    label: 'Tasks',    icon: 'check-square' },
   { id: 'habits',   label: 'Habits',   icon: 'repeat' },
+  { id: 'finance',  label: 'Finance',  icon: 'dollar' },
   { id: 'insights', label: 'Insights', icon: 'bar-chart' },
 ]
 
@@ -109,6 +111,7 @@ function AppShell() {
           {page === 'goals'    && <GoalsPage />}
           {page === 'tasks'    && <TasksPage />}
           {page === 'habits'   && <HabitsPage />}
+          {page === 'finance'  && <FinancePage />}
           {page === 'insights' && <InsightsPage />}
         </div>
       </main>

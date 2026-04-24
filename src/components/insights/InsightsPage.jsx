@@ -3,7 +3,6 @@ import Icon from '../shared/Icon'
 import ProgressBar from '../shared/ProgressBar'
 import GoalProgressChart from './GoalProgressChart'
 import HabitHeatmap from './HabitHeatmap'
-import FinanceSection from './FinanceSection'
 import SyncPanel from '../shared/SyncPanel'
 
 const CATEGORY_META = {
@@ -181,12 +180,6 @@ export default function InsightsPage() {
           </div>
         </section>
       )}
-
-      {/* Finance */}
-      <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Finance</h2>
-        <FinanceSection />
-      </section>
 
       {/* Sync — visible on mobile only (desktop has it in the sidebar) */}
       <section className="lg:hidden">

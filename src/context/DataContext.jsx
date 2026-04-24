@@ -36,16 +36,20 @@ export function DataProvider({ children }) {
     return id
   })
 
-  const [goals,    setGoals]    = useState(() => isFirebaseConfigured ? [] : readLocal('goals',    []))
-  const [tasks,    setTasks]    = useState(() => isFirebaseConfigured ? [] : readLocal('tasks',    []))
-  const [habits,   setHabits]   = useState(() => isFirebaseConfigured ? [] : readLocal('habits',   []))
-  const [accounts, setAccounts] = useState(() => isFirebaseConfigured ? [] : readLocal('accounts', []))
+  const [goals,        setGoals]        = useState(() => isFirebaseConfigured ? [] : readLocal('goals',        []))
+  const [tasks,        setTasks]        = useState(() => isFirebaseConfigured ? [] : readLocal('tasks',        []))
+  const [habits,       setHabits]       = useState(() => isFirebaseConfigured ? [] : readLocal('habits',       []))
+  const [accounts,     setAccounts]     = useState(() => isFirebaseConfigured ? [] : readLocal('accounts',     []))
+  const [transactions, setTransactions] = useState(() => isFirebaseConfigured ? [] : readLocal('transactions', []))
+  const [holdings,     setHoldings]     = useState(() => isFirebaseConfigured ? [] : readLocal('holdings',     []))
 
   // Persist to localStorage when not using Firebase
-  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('goals',    JSON.stringify(goals))    }, [goals])
-  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('tasks',    JSON.stringify(tasks))    }, [tasks])
-  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('habits',   JSON.stringify(habits))   }, [habits])
-  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('accounts', JSON.stringify(accounts)) }, [accounts])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('goals',        JSON.stringify(goals))        }, [goals])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('tasks',        JSON.stringify(tasks))        }, [tasks])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('habits',       JSON.stringify(habits))       }, [habits])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('accounts',     JSON.stringify(accounts))     }, [accounts])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('transactions', JSON.stringify(transactions)) }, [transactions])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('holdings',     JSON.stringify(holdings))     }, [holdings])
 
   // Firebase real-time listeners
   useEffect(() => {
@@ -55,10 +59,12 @@ export function DataProvider({ children }) {
     const toList = snap => snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(byDate)
 
     const unsubs = [
-      onSnapshot(collection(db, 'workspaces', workspaceId, 'goals'),    snap => setGoals(toList(snap))),
-      onSnapshot(collection(db, 'workspaces', workspaceId, 'tasks'),    snap => setTasks(toList(snap))),
-      onSnapshot(collection(db, 'workspaces', workspaceId, 'habits'),   snap => setHabits(toList(snap))),
-      onSnapshot(collection(db, 'workspaces', workspaceId, 'accounts'), snap => setAccounts(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'goals'),        snap => setGoals(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'tasks'),        snap => setTasks(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'habits'),       snap => setHabits(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'accounts'),     snap => setAccounts(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'transactions'), snap => setTransactions(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'holdings'),     snap => setHoldings(toList(snap))),
     ]
     return () => unsubs.forEach(u => u())
   }, [workspaceId])
@@ -292,6 +298,65 @@ export function DataProvider({ children }) {
     else setAccounts(prev => prev.filter(a => a.id !== id))
   }
 
+  // -- Transactions --
+  async function addTransaction(data) {
+    const id = crypto.randomUUID()
+    const tx = {
+      id,
+      date:        data.date        || toDateString(),
+      description: data.description || '',
+      amount:      Math.abs(Number(data.amount)) || 0,
+      type:        data.type        || 'expense',
+      category:    data.category    || 'other',
+      recurring:   data.recurring   || false,
+      note:        data.note        || '',
+      createdAt:   new Date().toISOString(),
+    }
+    if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'transactions', id), tx)
+    else setTransactions(prev => [tx, ...prev])
+    return id
+  }
+
+  async function updateTransaction(id, updates) {
+    if (isFirebaseConfigured) await updateDoc(doc(db, 'workspaces', workspaceId, 'transactions', id), updates)
+    else setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+  }
+
+  async function deleteTransaction(id) {
+    if (isFirebaseConfigured) await deleteDoc(doc(db, 'workspaces', workspaceId, 'transactions', id))
+    else setTransactions(prev => prev.filter(t => t.id !== id))
+  }
+
+  // -- Holdings (investments) --
+  async function addHolding(data) {
+    const id = crypto.randomUUID()
+    const holding = {
+      id,
+      ticker:       (data.ticker || '').toUpperCase(),
+      name:         data.name         || data.ticker || '',
+      shares:       Number(data.shares)       || 0,
+      costBasis:    Number(data.costBasis)    || 0,
+      currentValue: Number(data.currentValue) || 0,
+      accountType:  data.accountType  || 'taxable',
+      lastUpdated:  toDateString(),
+      createdAt:    new Date().toISOString(),
+    }
+    if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'holdings', id), holding)
+    else setHoldings(prev => [holding, ...prev])
+    return id
+  }
+
+  async function updateHolding(id, updates) {
+    const patch = { ...updates, lastUpdated: toDateString() }
+    if (isFirebaseConfigured) await updateDoc(doc(db, 'workspaces', workspaceId, 'holdings', id), patch)
+    else setHoldings(prev => prev.map(h => h.id === id ? { ...h, ...patch } : h))
+  }
+
+  async function deleteHolding(id) {
+    if (isFirebaseConfigured) await deleteDoc(doc(db, 'workspaces', workspaceId, 'holdings', id))
+    else setHoldings(prev => prev.filter(h => h.id !== id))
+  }
+
   function isCompletedToday(habit) {
     return habit.completions.includes(toDateString())
   }
@@ -329,7 +394,7 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{
-      goals, tasks, habits, accounts,
+      goals, tasks, habits, accounts, transactions, holdings,
       workspaceId, isFirebaseConfigured,
       joinWorkspace,
       addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal,
@@ -340,6 +405,8 @@ export function DataProvider({ children }) {
       addHabit, updateHabit, deleteHabit, toggleToday, isCompletedToday, getStreak, getLast7,
       archiveHabit, restoreHabit,
       addAccount, updateAccount, updateAccountBalance, deleteAccount,
+      addTransaction, updateTransaction, deleteTransaction,
+      addHolding, updateHolding, deleteHolding,
     }}>
       {children}
     </DataContext.Provider>
