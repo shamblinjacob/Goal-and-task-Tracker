@@ -4,6 +4,7 @@ import { useNotifications } from '../../hooks/useNotifications'
 import SwipeableItem from '../shared/SwipeableItem'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
+import HabitCheckIn from './HabitCheckIn'
 
 function greeting() {
   const h = new Date().getHours()
@@ -128,6 +129,13 @@ export default function TodayPage({ onNavigate }) {
             <p className="text-xs text-green-600 font-medium mt-2">All habits done today — great work!</p>
           )}
         </div>
+      )}
+
+      {/* AI Check-in */}
+      {activeHabits.length > 0 && (
+        <section>
+          <HabitCheckIn />
+        </section>
       )}
 
       {/* Habits */}

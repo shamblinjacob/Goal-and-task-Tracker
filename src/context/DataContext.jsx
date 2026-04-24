@@ -78,6 +78,13 @@ export function DataProvider({ children }) {
       category: data.category || 'other', targetDate: data.targetDate || null,
       progress: 0, status: 'active', createdAt: new Date().toISOString(),
       lastCheckIn: null, checkIns: [],
+      milestones: (data.milestones || []).filter(m => m.title?.trim()).map((m, i) => ({
+        id: m.id || crypto.randomUUID(),
+        title: m.title,
+        completed: !!m.completed,
+        completedAt: m.completedAt || null,
+        order: i,
+      })),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'goals', id), goal)
     else setGoals(prev => [goal, ...prev])
@@ -108,6 +115,23 @@ export function DataProvider({ children }) {
 
   function restoreGoal(id) {
     return updateGoal(id, { status: 'active' })
+  }
+
+  function toggleMilestone(goalId, milestoneId) {
+    const goal = goals.find(g => g.id === goalId)
+    if (!goal) return
+    const milestones = (goal.milestones || []).map(m => {
+      if (m.id !== milestoneId) return m
+      const completed = !m.completed
+      return { ...m, completed, completedAt: completed ? new Date().toISOString() : null }
+    })
+    // Auto-update progress when all milestones exist
+    const updates = { milestones }
+    if (milestones.length > 0) {
+      const pct = Math.round((milestones.filter(m => m.completed).length / milestones.length) * 100)
+      updates.progress = pct
+    }
+    return updateGoal(goalId, updates)
   }
 
   function checkInGoal(id, progress, note) {
@@ -279,6 +303,7 @@ export function DataProvider({ children }) {
       workspaceId, isFirebaseConfigured,
       joinWorkspace,
       addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal,
+      toggleMilestone,
       archiveGoal, restoreGoal, CATEGORY_COLORS,
       addTask, updateTask, deleteTask, toggleTask, getTasksForGoal,
       archiveTask, restoreTask,

@@ -29,17 +29,20 @@ function formatShortDate(str) {
 }
 
 export default function GoalCard({ goal, taskCount, completedTaskCount, onEdit, onDelete, onSetProgress, onComplete, onArchive }) {
-  const { checkInGoal } = useGoals()
+  const { checkInGoal, toggleMilestone } = useGoals()
   const [editingProgress, setEditingProgress] = useState(false)
   const [progressInput, setProgressInput]     = useState(goal.progress)
   const [showCheckIn, setShowCheckIn]         = useState(false)
   const [showJournal, setShowJournal]         = useState(false)
+  const [showMilestones, setShowMilestones]   = useState(true)
 
   const meta     = CATEGORY_META[goal.category] || CATEGORY_META.other
   const days     = daysUntil(goal.targetDate)
   const isOverdue = days !== null && days < 0 && goal.status !== 'completed'
   const due      = checkInDue(goal)
   const checkIns = (goal.checkIns || []).slice().reverse()
+  const milestones = goal.milestones || []
+  const doneMilestones = milestones.filter(m => m.completed).length
 
   function submitProgress(e) {
     e.preventDefault()
@@ -112,6 +115,40 @@ export default function GoalCard({ goal, taskCount, completedTaskCount, onEdit, 
           </div>
           <ProgressBar value={goal.progress} color={meta.color} height={6} />
         </div>
+
+        {/* Milestones */}
+        {milestones.length > 0 && (
+          <div>
+            <button
+              onClick={() => setShowMilestones(v => !v)}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 cursor-pointer transition-colors w-full"
+            >
+              <Icon name={showMilestones ? 'chevron-down' : 'chevron-right'} size={12} />
+              <span className="font-medium">Milestones</span>
+              <span className="text-gray-400 ml-auto tabular-nums">{doneMilestones}/{milestones.length}</span>
+            </button>
+            {showMilestones && (
+              <ul className="mt-2 space-y-1.5">
+                {milestones.map(m => (
+                  <li key={m.id} className="flex items-start gap-2">
+                    <button
+                      onClick={() => toggleMilestone(goal.id, m.id)}
+                      className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+                        m.completed ? 'border-blue-500 bg-blue-500' : 'border-gray-300 hover:border-blue-400'
+                      }`}
+                      style={m.completed ? { background: meta.color, borderColor: meta.color } : {}}
+                    >
+                      {m.completed && <Icon name="check" size={8} className="text-white" strokeWidth={3.5} />}
+                    </button>
+                    <span className={`text-xs leading-relaxed ${m.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                      {m.title}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between text-xs text-gray-400">
