@@ -1,6 +1,11 @@
 import { useDataContext } from '../context/DataContext'
 
 export function useTasks() {
-  const { tasks, addTask, updateTask, deleteTask, toggleTask, getTasksForGoal } = useDataContext()
-  return { tasks, addTask, updateTask, deleteTask, toggleTask, getTasksForGoal }
+  const ctx = useDataContext()
+  return {
+    tasks: ctx.tasks,
+    addTask: ctx.addTask, updateTask: ctx.updateTask, deleteTask: ctx.deleteTask,
+    toggleTask: ctx.toggleTask, getTasksForGoal: ctx.getTasksForGoal,
+    archiveTask: ctx.archiveTask, restoreTask: ctx.restoreTask,
+  }
 }

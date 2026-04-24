@@ -1,0 +1,13 @@
+{
+  "name": "GoalTracker",
+  "short_name": "Goals",
+  "description": "Track goals, tasks, and daily habits",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

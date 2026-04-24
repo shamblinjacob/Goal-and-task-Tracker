@@ -10,30 +10,34 @@ import Icon from '../shared/Icon'
 const FILTERS = [
   { value: 'pending',   label: 'To do' },
   { value: 'completed', label: 'Done' },
-  { value: 'all',       label: 'All' },
+  { value: 'archived',  label: 'Archived' },
 ]
 
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 }
 
 export default function TasksPage() {
-  const { tasks, addTask, updateTask, deleteTask, toggleTask } = useTasks()
+  const { tasks, addTask, updateTask, deleteTask, toggleTask, archiveTask, restoreTask } = useTasks()
   const { goals } = useGoals()
   const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState(null)
-  const [filter, setFilter] = useState('pending')
+  const [editing, setEditing]   = useState(null)
+  const [filter, setFilter]     = useState('pending')
   const [goalFilter, setGoalFilter] = useState('all')
 
   const filtered = tasks
-    .filter(t => filter === 'pending' ? !t.completed : filter === 'completed' ? t.completed : true)
+    .filter(t => {
+      if (filter === 'pending')   return !t.completed && !t.archived
+      if (filter === 'completed') return t.completed  && !t.archived
+      if (filter === 'archived')  return t.archived
+      return true
+    })
     .filter(t => goalFilter === 'all' ? true : t.goalId === goalFilter)
     .sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1
       return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
     })
 
-  function handleAdd(data) { addTask(data); setShowForm(false) }
+  function handleAdd(data)  { addTask(data); setShowForm(false) }
   function handleEdit(data) { updateTask(editing.id, data); setEditing(null) }
-
   const goalMap = Object.fromEntries(goals.map(g => [g.id, g]))
 
   return (
@@ -56,15 +60,17 @@ export default function TasksPage() {
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div className="flex gap-1.5">
           {FILTERS.map(f => {
-            const count = f.value === 'all' ? tasks.length : tasks.filter(t => f.value === 'pending' ? !t.completed : t.completed).length
+            const count = f.value === 'pending'
+              ? tasks.filter(t => !t.completed && !t.archived).length
+              : f.value === 'completed'
+              ? tasks.filter(t => t.completed && !t.archived).length
+              : tasks.filter(t => t.archived).length
             return (
               <button
                 key={f.value}
                 onClick={() => setFilter(f.value)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-                  filter === f.value
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
+                  filter === f.value ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
                 {f.label} <span className="opacity-50 text-xs ml-0.5">{count}</span>
@@ -85,12 +91,16 @@ export default function TasksPage() {
         )}
       </div>
 
+      {filter !== 'archived' && (
+        <p className="text-xs text-gray-400 mb-3">Swipe right to complete · swipe left to archive</p>
+      )}
+
       {filtered.length === 0 ? (
         <EmptyState
           icon="check-square"
-          title={filter === 'completed' ? 'No completed tasks' : 'No tasks yet'}
-          subtitle={filter === 'completed' ? 'Completed tasks will appear here.' : 'Break your goals down into actionable steps.'}
-          action={filter !== 'completed' ? { label: 'Add your first task', onClick: () => setShowForm(true) } : undefined}
+          title={filter === 'archived' ? 'Nothing archived' : filter === 'completed' ? 'No completed tasks' : 'No tasks yet'}
+          subtitle={filter === 'archived' ? 'Archived tasks appear here.' : filter === 'completed' ? 'Completed tasks will appear here.' : 'Break your goals down into actionable steps.'}
+          action={filter === 'pending' ? { label: 'Add your first task', onClick: () => setShowForm(true) } : undefined}
         />
       ) : (
         <div className="space-y-2">
@@ -102,21 +112,15 @@ export default function TasksPage() {
               onToggle={toggleTask}
               onEdit={setEditing}
               onDelete={deleteTask}
+              onArchive={archiveTask}
+              onRestore={restoreTask}
             />
           ))}
         </div>
       )}
 
-      {showForm && (
-        <Modal title="New task" onClose={() => setShowForm(false)}>
-          <TaskForm onSubmit={handleAdd} goals={goals} />
-        </Modal>
-      )}
-      {editing && (
-        <Modal title="Edit task" onClose={() => setEditing(null)}>
-          <TaskForm onSubmit={handleEdit} initial={editing} goals={goals} />
-        </Modal>
-      )}
+      {showForm && <Modal title="New task" onClose={() => setShowForm(false)}><TaskForm onSubmit={handleAdd} goals={goals} /></Modal>}
+      {editing   && <Modal title="Edit task" onClose={() => setEditing(null)}><TaskForm onSubmit={handleEdit} initial={editing} goals={goals} /></Modal>}
     </div>
   )
 }

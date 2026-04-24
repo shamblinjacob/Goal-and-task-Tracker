@@ -99,6 +99,14 @@ export function DataProvider({ children }) {
     return updateGoal(id, { status: 'completed', progress: 100 })
   }
 
+  function archiveGoal(id) {
+    return updateGoal(id, { status: 'archived' })
+  }
+
+  function restoreGoal(id) {
+    return updateGoal(id, { status: 'active' })
+  }
+
   function checkInGoal(id, progress, note) {
     const today = toDateString()
     const goal = goals.find(g => g.id === id)
@@ -140,8 +148,11 @@ export function DataProvider({ children }) {
     })
   }
 
+  function archiveTask(id) { return updateTask(id, { archived: true }) }
+  function restoreTask(id) { return updateTask(id, { archived: false }) }
+
   function getTasksForGoal(goalId) {
-    return tasks.filter(t => t.goalId === goalId)
+    return tasks.filter(t => t.goalId === goalId && !t.archived)
   }
 
   // -- Habits --
@@ -178,6 +189,9 @@ export function DataProvider({ children }) {
         : [...habit.completions, today],
     })
   }
+
+  function archiveHabit(id) { return updateHabit(id, { archived: true }) }
+  function restoreHabit(id) { return updateHabit(id, { archived: false }) }
 
   function isCompletedToday(habit) {
     return habit.completions.includes(toDateString())
@@ -219,9 +233,12 @@ export function DataProvider({ children }) {
       goals, tasks, habits,
       workspaceId, isFirebaseConfigured,
       joinWorkspace,
-      addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal, CATEGORY_COLORS,
+      addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal,
+      archiveGoal, restoreGoal, CATEGORY_COLORS,
       addTask, updateTask, deleteTask, toggleTask, getTasksForGoal,
+      archiveTask, restoreTask,
       addHabit, updateHabit, deleteHabit, toggleToday, isCompletedToday, getStreak, getLast7,
+      archiveHabit, restoreHabit,
     }}>
       {children}
     </DataContext.Provider>
