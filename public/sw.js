@@ -1,4 +1,4 @@
-const CACHE = 'goaltracker-v1'
+const CACHE = 'goaltracker-v2'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', e => e.waitUntil(clients.claim()))
@@ -16,18 +16,33 @@ self.addEventListener('message', e => {
   if (e.data?.type === 'CANCEL') {
     scheduleTime = null
   }
+  // Catch-up trigger from the page when the SW missed the scheduled time
+  // (common on iOS / when the browser was closed overnight).
+  if (e.data?.type === 'FIRE_NOW' && e.data.snapshot) {
+    lastFired = e.data.today
+    fireNotification(e.data.snapshot, e.data.today)
+  }
 })
+
+function localDateString(d = new Date()) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 // Check every 30 seconds whether it's time to fire
 setInterval(() => {
   if (!scheduleTime || !snapshot) return
   const now  = new Date()
   const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
-  const today = now.toISOString().split('T')[0]
-  if (hhmm !== scheduleTime) return
-  if (lastFired === today)   return   // already fired today
+  const today = localDateString(now)
+  if (hhmm < scheduleTime)    return   // not time yet
+  if (lastFired === today)    return   // already fired today
   lastFired = today
   fireNotification(snapshot, today)
+  // Tell any open page to mark this fired, so the catch-up logic doesn't double-fire
+  self.clients.matchAll().then(list => list.forEach(c => c.postMessage({ type: 'FIRED', today })))
 }, 30000)
 
 function fireNotification({ habits = [], tasks = [], goals = [] }, today) {

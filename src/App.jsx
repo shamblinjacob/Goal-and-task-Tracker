@@ -3,6 +3,7 @@ import { DataProvider } from './context/DataContext'
 import { useGoals } from './hooks/useGoals'
 import { useTasks } from './hooks/useTasks'
 import { useHabits } from './hooks/useHabits'
+import { toDateString } from './utils/dateUtils'
 import Icon from './components/shared/Icon'
 import TodayPage    from './components/today/TodayPage'
 import GoalsPage    from './components/goals/GoalsPage'
@@ -27,7 +28,7 @@ function AppShell() {
   const { tasks } = useTasks()
   const { habits, isCompletedToday } = useHabits()
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = toDateString()
 
   const badges = {
     tasks:  tasks.filter(t => !t.completed && !t.archived).length || null,
@@ -36,13 +37,20 @@ function AppShell() {
   }
 
   // ── Horizontal swipe between tabs ─────────────────────────────────────────
+  // Tuned to be deliberate, not twitchy:
+  //   - 16px before locking to an axis (avoids stealing slow vertical scrolls)
+  //   - 90px minimum horizontal travel
+  //   - dx must be at least 1.7× dy at release (clear horizontal intent)
+  //   - swipe must complete in under 600ms (a slow drag is not a swipe)
   const swipeStartX = useRef(null)
   const swipeStartY = useRef(null)
+  const swipeStartT = useRef(0)
   const axisLocked  = useRef(null)
 
   function onMainTouchStart(e) {
     swipeStartX.current = e.touches[0].clientX
     swipeStartY.current = e.touches[0].clientY
+    swipeStartT.current = Date.now()
     axisLocked.current  = null
   }
 
@@ -50,8 +58,8 @@ function AppShell() {
     if (swipeStartX.current === null) return
     const dx = e.touches[0].clientX - swipeStartX.current
     const dy = e.touches[0].clientY - swipeStartY.current
-    if (!axisLocked.current && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
-      axisLocked.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    if (!axisLocked.current && (Math.abs(dx) > 16 || Math.abs(dy) > 16)) {
+      axisLocked.current = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'h' : 'v'
     }
   }
 
@@ -60,8 +68,12 @@ function AppShell() {
       swipeStartX.current = null; return
     }
     const dx = e.changedTouches[0].clientX - swipeStartX.current
+    const dy = e.changedTouches[0].clientY - swipeStartY.current
+    const dt = Date.now() - swipeStartT.current
     swipeStartX.current = null
-    if (Math.abs(dx) < 50) return
+    if (Math.abs(dx) < 90)              return   // not far enough
+    if (Math.abs(dx) < Math.abs(dy)*1.7) return  // not clearly horizontal
+    if (dt > 600)                        return  // too slow to be a swipe
     const idx = TABS.findIndex(t => t.id === page)
     if (dx < 0 && idx < TABS.length - 1) setPage(TABS[idx + 1].id)
     if (dx > 0 && idx > 0)               setPage(TABS[idx - 1].id)

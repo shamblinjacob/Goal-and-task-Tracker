@@ -1,3 +1,5 @@
+import { toMonthString } from '../../utils/dateUtils'
+
 function fmt(n) {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
   return `$${Math.round(n)}`
@@ -10,7 +12,7 @@ export default function CashFlowChart({ transactions, height = 120 }) {
     d.setDate(1)
     d.setMonth(d.getMonth() - i)
     months.push({
-      key:      d.toISOString().slice(0, 7),
+      key:      toMonthString(d),
       label:    d.toLocaleDateString('en-US', { month: 'short' }),
       income:   0,
       expenses: 0,

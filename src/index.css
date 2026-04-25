@@ -9,6 +9,10 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background: #f8fafc;
   color: #1e293b;
+  /* Block iOS double-tap-to-zoom + pinch-zoom (Safari ignores user-scalable=no
+     on regular websites, so this CSS is needed alongside the viewport meta) */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 #root {

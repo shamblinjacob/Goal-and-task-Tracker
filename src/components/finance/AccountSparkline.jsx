@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { getAccountBalanceOnDate } from '../../utils/financeUtils'
+import { toDateString } from '../../utils/dateUtils'
 
 export default function AccountSparkline({ account, transactions, width = 80, height = 32 }) {
   const points = useMemo(() => {
@@ -10,7 +11,7 @@ export default function AccountSparkline({ account, transactions, width = 80, he
       if (tx.accountId === account.id || tx.toAccountId === account.id) dateSet.add(tx.date)
     }
     // Always include today
-    dateSet.add(new Date().toISOString().split('T')[0])
+    dateSet.add(toDateString())
 
     const dates = [...dateSet].sort()
     if (dates.length < 2) return []

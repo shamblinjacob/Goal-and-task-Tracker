@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useGoals } from '../../hooks/useGoals'
+import { toDateString } from '../../utils/dateUtils'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
 
@@ -13,8 +14,8 @@ function getWeekBounds() {
   const end = new Date(start)
   end.setDate(start.getDate() + 6)
   return {
-    start: start.toISOString().split('T')[0],
-    end:   end.toISOString().split('T')[0],
+    start: toDateString(start),
+    end:   toDateString(end),
   }
 }
 

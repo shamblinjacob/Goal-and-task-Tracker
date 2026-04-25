@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useDataContext } from '../../context/DataContext'
 import { computeHoldingStats, computeAccountBalance } from '../../utils/financeUtils'
+import { toDateString, toMonthString } from '../../utils/dateUtils'
 import Icon from '../shared/Icon'
 import Modal from '../shared/Modal'
 import ProgressBar from '../shared/ProgressBar'
@@ -66,7 +67,7 @@ function fmtK(n) {
 }
 
 function thisMonth() {
-  return new Date().toISOString().slice(0, 7)
+  return toMonthString()
 }
 
 function catMeta(type, category) {
@@ -79,7 +80,7 @@ const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm f
 // ── Transaction Form ──────────────────────────────────────────────────────────
 
 function TransactionForm({ initial = {}, onSubmit, accounts = [] }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = toDateString()
   const [form, setForm] = useState({
     type:        initial.type        || 'expense',
     date:        initial.date        || today,
@@ -387,7 +388,7 @@ function TxRow({ tx, onEdit, onDelete }) {
 
 function TradeForm({ holding, onClose }) {
   const { addTrade } = useDataContext()
-  const today = new Date().toISOString().split('T')[0]
+  const today = toDateString()
   const [form, setForm] = useState({ type: 'buy', date: today, shares: '', pricePerShare: '', fee: '' })
   function set(f, v) { setForm(p => ({ ...p, [f]: v })) }
 

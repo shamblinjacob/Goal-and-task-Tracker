@@ -1,6 +1,6 @@
-const WEEKS = 14   // how many weeks back to show
+import { toDateString } from '../../utils/dateUtils'
 
-function toDateString(d) { return d.toISOString().split('T')[0] }
+const WEEKS = 14   // how many weeks back to show
 
 function buildGrid(habits) {
   const active = habits.filter(h => !h.archived)

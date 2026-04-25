@@ -3,6 +3,7 @@ import {
   collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
+import { toDateString } from '../utils/dateUtils'
 
 const DataContext = createContext(null)
 
@@ -17,10 +18,6 @@ export const CATEGORY_COLORS = {
 
 function generateCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
-}
-
-function toDateString(date = new Date()) {
-  return date.toISOString().split('T')[0]
 }
 
 function readLocal(key, fallback) {

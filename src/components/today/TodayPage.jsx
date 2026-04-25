@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDataContext } from '../../context/DataContext'
 import { useNotifications } from '../../hooks/useNotifications'
+import { toDateString } from '../../utils/dateUtils'
 import SwipeableItem from '../shared/SwipeableItem'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
@@ -79,7 +80,16 @@ function NotifPanel({ habits, tasks, goals }) {
 
       {!enabled && (
         <p className="text-xs text-gray-400 leading-relaxed">
-          Get a daily summary of your habits, tasks, and goal motivation delivered to your phone each morning.
+          Get a daily summary of your habits, tasks, and goal motivation each morning.
+          <br />
+          <span className="text-gray-400">
+            Tip: install the app to your home screen — iOS and Android only fire scheduled notifications reliably for installed PWAs.
+          </span>
+        </p>
+      )}
+      {enabled && (
+        <p className="text-xs text-gray-400 leading-relaxed mt-2">
+          If your phone doesn't get the push at the scheduled time, opening the app any time after will deliver the briefing.
         </p>
       )}
 
@@ -96,7 +106,7 @@ export default function TodayPage({ onNavigate }) {
     toggleToday, archiveHabit, isCompletedToday,
   } = useDataContext()
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = toDateString()
 
   const activeHabits   = habits.filter(h => !h.archived)
   const doneHabits     = activeHabits.filter(h => h.completions?.includes(today))

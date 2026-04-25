@@ -1,4 +1,5 @@
 import { useDataContext } from '../../context/DataContext'
+import { toDateString } from '../../utils/dateUtils'
 import Icon from '../shared/Icon'
 import ProgressBar from '../shared/ProgressBar'
 import GoalProgressChart from './GoalProgressChart'
@@ -13,8 +14,6 @@ const CATEGORY_META = {
   learning: { label: 'Learning', color: '#ec4899' },
   other:    { label: 'Other',    color: '#6b7280' },
 }
-
-function toDateString(d) { return d.toISOString().split('T')[0] }
 
 export default function InsightsPage() {
   const { goals, tasks, habits } = useDataContext()

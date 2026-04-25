@@ -1,3 +1,5 @@
+import { toDateString } from './dateUtils'
+
 // ── Holding stats from trades ─────────────────────────────────────────────────
 
 export function computeHoldingStats(holding) {
@@ -26,7 +28,7 @@ export function computeHoldingStats(holding) {
 // ── Account balance helpers ───────────────────────────────────────────────────
 
 export function computeAccountBalance(account, transactions) {
-  return getAccountBalanceOnDate(account, transactions, new Date().toISOString().split('T')[0])
+  return getAccountBalanceOnDate(account, transactions, toDateString())
 }
 
 export function getAccountBalanceOnDate(account, transactions, date) {
@@ -84,8 +86,8 @@ export function getHoldingValueOnDate(holding, date) {
 
 export function buildNetWorthHistory(accounts, holdings, transactions, range) {
   const now      = new Date()
-  const startStr = getRangeStart(range, now).toISOString().split('T')[0]
-  const todayStr = now.toISOString().split('T')[0]
+  const startStr = toDateString(getRangeStart(range, now))
+  const todayStr = toDateString(now)
 
   const dateSet = new Set([todayStr])
 
