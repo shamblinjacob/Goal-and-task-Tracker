@@ -9,6 +9,7 @@ export function useGoals() {
     toggleMilestone: ctx.toggleMilestone,
     logWeeklyEntry: ctx.logWeeklyEntry, deleteWeeklyEntry: ctx.deleteWeeklyEntry,
     archiveGoal: ctx.archiveGoal, restoreGoal: ctx.restoreGoal,
+    reorderGoals: ctx.reorderGoals,
     CATEGORY_COLORS,
   }
 }

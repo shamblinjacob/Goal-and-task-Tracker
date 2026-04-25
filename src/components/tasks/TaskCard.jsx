@@ -1,5 +1,7 @@
 import Icon from '../shared/Icon'
 import SwipeableItem from '../shared/SwipeableItem'
+import ConfirmDelete from '../shared/ConfirmDelete'
+import { vibrate } from '../../utils/haptics'
 
 const PRIORITY_META = {
   high:   { color: '#ef4444', label: 'High' },
@@ -16,29 +18,44 @@ const CATEGORY_META = {
   other:    { label: 'Other',    color: '#6b7280' },
 }
 
+const RECUR_LABEL = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }
+
 function daysUntil(dateStr) {
   if (!dateStr) return null
-  return Math.ceil((new Date(dateStr) - new Date()) / 86400000)
+  return Math.ceil((new Date(dateStr + 'T12:00:00') - new Date()) / 86400000)
 }
 
-export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, onArchive, onRestore }) {
-  const meta     = PRIORITY_META[task.priority] || PRIORITY_META.medium
-  const days     = daysUntil(task.dueDate)
-  const isOverdue = days !== null && days < 0 && !task.completed
+export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, onArchive, onRestore, showDragHandle, isRecurringDone }) {
+  const meta      = PRIORITY_META[task.priority] || PRIORITY_META.medium
+  const days      = daysUntil(task.dueDate)
+  const isOverdue = days !== null && days < 0
+  const isDone    = task.recurring ? isRecurringDone?.(task) : task.completed
+
+  function handleToggle() {
+    vibrate(12)
+    onToggle(task.id)
+  }
 
   const inner = (
-    <div className={`bg-white rounded-xl border border-gray-100 p-3.5 flex items-start gap-3 transition-opacity ${task.completed ? 'opacity-40' : ''}`}>
+    <div className={`bg-white rounded-xl border border-gray-100 p-3.5 flex items-start gap-3 transition-opacity ${isDone ? 'opacity-40' : ''}`}>
+      {showDragHandle && (
+        <div className="mt-0.5 text-gray-300 cursor-grab active:cursor-grabbing shrink-0 touch-none" style={{ touchAction: 'none' }}>
+          <Icon name="grip-vertical" size={14} />
+        </div>
+      )}
       <button
-        onClick={() => onToggle(task.id)}
+        onClick={handleToggle}
         className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
-          task.completed ? 'border-blue-500 bg-blue-500' : 'border-gray-300 hover:border-blue-400'
+          isDone
+            ? (task.recurring ? 'border-indigo-400 bg-indigo-400' : 'border-blue-500 bg-blue-500')
+            : 'border-gray-300 hover:border-blue-400'
         }`}
       >
-        {task.completed && <Icon name="check" size={10} className="text-white" strokeWidth={3} />}
+        {isDone && <Icon name="check" size={10} className="text-white" strokeWidth={3} />}
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <span className={`text-sm font-medium leading-snug ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+          <span className={`text-sm font-medium leading-snug ${isDone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
             {task.title}
           </span>
           <div className="flex items-center gap-0.5 shrink-0">
@@ -51,9 +68,7 @@ export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, 
                 <button onClick={() => onEdit(task)} className="p-1 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-500 cursor-pointer transition-colors">
                   <Icon name="edit" size={13} />
                 </button>
-                <button onClick={() => onDelete(task.id)} className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-400 cursor-pointer transition-colors">
-                  <Icon name="trash" size={13} />
-                </button>
+                <ConfirmDelete onConfirm={() => onDelete(task.id)} size={13} />
               </>
             )}
           </div>
@@ -64,6 +79,12 @@ export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, 
             <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: meta.color }} />
             {meta.label}
           </span>
+          {task.recurring && (
+            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 flex items-center gap-1">
+              <Icon name="repeat" size={10} />
+              {RECUR_LABEL[task.recurring] || task.recurring}
+            </span>
+          )}
           {task.category && task.category !== 'other' && (
             <span
               className="text-xs font-medium px-1.5 py-0.5 rounded"
@@ -76,9 +97,9 @@ export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, 
             <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium truncate max-w-28">{goalTitle}</span>
           )}
           {task.dueDate && (
-            <span className={`text-xs flex items-center gap-1 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+            <span className={`text-xs flex items-center gap-1 ${isOverdue && !isDone ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
               <Icon name="calendar" size={11} />
-              {isOverdue ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `${days}d`}
+              {isOverdue && !isDone ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `${days}d`}
             </span>
           )}
         </div>
@@ -86,11 +107,11 @@ export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, 
     </div>
   )
 
-  if (task.archived || task.completed) return inner
+  if (task.archived || isDone) return inner
 
   return (
     <SwipeableItem
-      onComplete={() => onToggle(task.id)}
+      onComplete={handleToggle}
       onArchive={() => onArchive(task.id)}
       completeLabel="Complete"
     >

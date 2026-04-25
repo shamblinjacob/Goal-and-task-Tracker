@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGoals } from '../../hooks/useGoals'
 import { useTasks } from '../../hooks/useTasks'
 import GoalCard from './GoalCard'
@@ -14,12 +14,16 @@ const FILTERS = [
   { value: 'archived',  label: 'Archived' },
 ]
 
-export default function GoalsPage() {
-  const { goals, addGoal, updateGoal, deleteGoal, setProgress, completeGoal, archiveGoal, restoreGoal } = useGoals()
+export default function GoalsPage({ fabTrigger = 0 }) {
+  const { goals, addGoal, updateGoal, deleteGoal, setProgress, completeGoal, archiveGoal, restoreGoal, reorderGoals } = useGoals()
   const { getTasksForGoal } = useTasks()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing]   = useState(null)
   const [filter, setFilter]     = useState('active')
+  const [dragFrom, setDragFrom] = useState(null)
+  const [dragOver, setDragOver] = useState(null)
+
+  useEffect(() => { if (fabTrigger > 0) setShowForm(true) }, [fabTrigger])
 
   const filtered       = goals.filter(g => g.status === filter)
   const weeklyGoals    = filtered.filter(g => g.type === 'weekly')
@@ -27,6 +31,17 @@ export default function GoalsPage() {
 
   function handleAdd(data)  { addGoal(data); setShowForm(false) }
   function handleEdit(data) { updateGoal(editing.id, data); setEditing(null) }
+
+  function handleDrop() {
+    if (dragFrom !== null && dragOver !== null && dragFrom !== dragOver) {
+      const next = [...regularGoals]
+      const [item] = next.splice(dragFrom, 1)
+      next.splice(dragOver, 0, item)
+      reorderGoals([...weeklyGoals, ...next])
+    }
+    setDragFrom(null)
+    setDragOver(null)
+  }
 
   const isEmpty = filtered.length === 0
 
@@ -39,7 +54,7 @@ export default function GoalsPage() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
           style={{ background: '#3b82f6' }}
         >
           <Icon name="plus" size={15} />
@@ -97,21 +112,34 @@ export default function GoalsPage() {
               {weeklyGoals.length > 0 && (
                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Long-term goals</h2>
               )}
+              {filter === 'active' && regularGoals.length > 1 && (
+                <p className="text-xs text-gray-400 mb-2">Drag <Icon name="grip-vertical" size={11} className="inline" /> to reorder</p>
+              )}
               <div className="space-y-3">
-                {regularGoals.map(goal => {
+                {regularGoals.map((goal, i) => {
                   const goalTasks = getTasksForGoal(goal.id)
                   return (
-                    <GoalCard
+                    <div
                       key={goal.id}
-                      goal={goal}
-                      taskCount={goalTasks.length}
-                      completedTaskCount={goalTasks.filter(t => t.completed).length}
-                      onEdit={setEditing}
-                      onDelete={deleteGoal}
-                      onSetProgress={setProgress}
-                      onComplete={completeGoal}
-                      onArchive={archiveGoal}
-                    />
+                      draggable={filter === 'active'}
+                      onDragStart={() => setDragFrom(i)}
+                      onDragEnter={() => setDragOver(i)}
+                      onDragOver={e => e.preventDefault()}
+                      onDragEnd={handleDrop}
+                      className={`transition-opacity ${dragFrom === i ? 'opacity-40' : ''}`}
+                      style={dragOver === i && dragFrom !== i ? { boxShadow: '0 -2px 0 0 #3b82f6', borderRadius: '12px' } : {}}
+                    >
+                      <GoalCard
+                        goal={goal}
+                        taskCount={goalTasks.length}
+                        completedTaskCount={goalTasks.filter(t => t.completed).length}
+                        onEdit={setEditing}
+                        onDelete={deleteGoal}
+                        onSetProgress={setProgress}
+                        onComplete={completeGoal}
+                        onArchive={archiveGoal}
+                      />
+                    </div>
                   )
                 })}
               </div>

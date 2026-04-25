@@ -103,7 +103,7 @@ export default function TodayPage({ onNavigate }) {
   const {
     goals, tasks, habits,
     toggleTask, archiveTask,
-    toggleToday, archiveHabit, isCompletedToday,
+    toggleToday, archiveHabit, isCompletedToday, getStreak,
   } = useDataContext()
 
   const today = toDateString()
@@ -120,6 +120,12 @@ export default function TodayPage({ onNavigate }) {
   const weeklyGoals    = goals.filter(g => g.status === 'active' && g.type === 'weekly')
   const activeGoals    = goals.filter(g => g.status === 'active' && g.type !== 'weekly' && g.description)
   const habitPct       = activeHabits.length ? Math.round((doneHabits.length / activeHabits.length) * 100) : 0
+
+  const topStreaks = activeHabits
+    .map(h => ({ habit: h, streak: getStreak(h) }))
+    .filter(({ streak }) => streak > 0)
+    .sort((a, b) => b.streak - a.streak)
+    .slice(0, 3)
 
   return (
     <div className="space-y-5">
@@ -141,6 +147,22 @@ export default function TodayPage({ onNavigate }) {
             <p className="text-xs text-green-600 font-medium mt-2">All habits done today — great work!</p>
           )}
         </div>
+      )}
+
+      {/* Top streaks */}
+      {topStreaks.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Current streaks</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {topStreaks.map(({ habit, streak }) => (
+              <div key={habit.id} className="bg-white rounded-xl border border-gray-100 p-3 flex flex-col items-center gap-1">
+                <Icon name="flame" size={20} className="text-orange-400" />
+                <span className="text-xl font-bold text-gray-900 tabular-nums leading-none">{streak}</span>
+                <span className="text-xs text-gray-400 text-center leading-tight line-clamp-2">{habit.title}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Weekly recurring goals */}

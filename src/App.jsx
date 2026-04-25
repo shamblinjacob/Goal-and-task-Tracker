@@ -22,8 +22,12 @@ const TABS = [
   { id: 'insights', label: 'Insights', icon: 'bar-chart' },
 ]
 
+// Pages that show the FAB (floating add button) on mobile
+const FAB_PAGES = new Set(['tasks', 'goals', 'habits', 'finance'])
+
 function AppShell() {
   const [page, setPage] = useState('today')
+  const [fabTrigger, setFabTrigger] = useState(0)
   const { goals } = useGoals()
   const { tasks } = useTasks()
   const { habits, isCompletedToday } = useHabits()
@@ -120,13 +124,24 @@ function AppShell() {
       >
         <div className="max-w-2xl mx-auto px-4 py-6">
           {page === 'today'    && <TodayPage onNavigate={setPage} />}
-          {page === 'goals'    && <GoalsPage />}
-          {page === 'tasks'    && <TasksPage />}
-          {page === 'habits'   && <HabitsPage />}
-          {page === 'finance'  && <FinancePage />}
+          {page === 'goals'    && <GoalsPage fabTrigger={fabTrigger} />}
+          {page === 'tasks'    && <TasksPage fabTrigger={fabTrigger} />}
+          {page === 'habits'   && <HabitsPage fabTrigger={fabTrigger} />}
+          {page === 'finance'  && <FinancePage fabTrigger={fabTrigger} />}
           {page === 'insights' && <InsightsPage />}
         </div>
       </main>
+
+      {/* Mobile FAB — floating add button on pages that support it */}
+      {FAB_PAGES.has(page) && (
+        <button
+          onClick={() => setFabTrigger(n => n + 1)}
+          className="lg:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-blue-700 active:scale-95 transition-transform"
+          aria-label="Add"
+        >
+          <Icon name="plus" size={26} strokeWidth={2.5} />
+        </button>
+      )}
 
       {/* Mobile bottom tab bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
+import ConfirmDelete from '../shared/ConfirmDelete'
 import CheckInModal from './CheckInModal'
 import { useGoals } from '../../hooks/useGoals'
 
@@ -88,9 +89,7 @@ export default function GoalCard({ goal, taskCount, completedTaskCount, onEdit, 
                 <Icon name="archive" size={15} />
               </button>
             ) : (
-              <button onClick={() => onDelete(goal.id)} title="Delete permanently" className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 cursor-pointer transition-colors">
-                <Icon name="trash" size={15} />
-              </button>
+              <ConfirmDelete onConfirm={() => onDelete(goal.id)} size={15} />
             )}
           </div>
         </div>

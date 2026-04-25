@@ -64,6 +64,8 @@ export default function Icon({ name, size = 18, className = '', strokeWidth = 1.
       return <svg {...p}><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
     case 'zap':
       return <svg {...p}><polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></svg>
+    case 'grip-vertical':
+      return <svg {...p}><circle cx="9" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="19" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="19" r="1" fill="currentColor" stroke="none"/></svg>
     default:
       return null
   }

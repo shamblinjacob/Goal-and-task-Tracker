@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useHabits } from '../../hooks/useHabits'
 import { useGoals } from '../../hooks/useGoals'
 import HabitCard from './HabitCard'
@@ -12,12 +12,16 @@ const FILTERS = [
   { value: 'archived', label: 'Archived' },
 ]
 
-export default function HabitsPage() {
-  const { habits, addHabit, updateHabit, deleteHabit, isCompletedToday, archiveHabit, restoreHabit } = useHabits()
+export default function HabitsPage({ fabTrigger = 0 }) {
+  const { habits, addHabit, updateHabit, deleteHabit, isCompletedToday, archiveHabit, restoreHabit, reorderHabits } = useHabits()
   const { goals } = useGoals()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing]   = useState(null)
   const [filter, setFilter]     = useState('active')
+  const [dragFrom, setDragFrom] = useState(null)
+  const [dragOver, setDragOver] = useState(null)
+
+  useEffect(() => { if (fabTrigger > 0) setShowForm(true) }, [fabTrigger])
 
   const goalMap      = Object.fromEntries(goals.map(g => [g.id, g]))
   const activeHabits = habits.filter(h => !h.archived)
@@ -32,6 +36,17 @@ export default function HabitsPage() {
   function handleAdd(data)  { addHabit(data); setShowForm(false) }
   function handleEdit(data) { updateHabit(editing.id, data); setEditing(null) }
 
+  function handleDrop() {
+    if (dragFrom !== null && dragOver !== null && dragFrom !== dragOver) {
+      const next = [...filtered]
+      const [item] = next.splice(dragFrom, 1)
+      next.splice(dragOver, 0, item)
+      reorderHabits(next)
+    }
+    setDragFrom(null)
+    setDragOver(null)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
@@ -41,7 +56,7 @@ export default function HabitsPage() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
           style={{ background: '#3b82f6' }}
         >
           <Icon name="plus" size={15} />
@@ -82,7 +97,7 @@ export default function HabitsPage() {
       )}
 
       {filter === 'active' && total > 0 && (
-        <p className="text-xs text-gray-400 mb-3">Swipe right to mark done · swipe left to archive</p>
+        <p className="text-xs text-gray-400 mb-3">Swipe right to mark done · swipe left to archive · drag <Icon name="grip-vertical" size={11} className="inline" /> to reorder</p>
       )}
 
       {filtered.length === 0 ? (
@@ -94,16 +109,27 @@ export default function HabitsPage() {
         />
       ) : (
         <div className="space-y-3">
-          {filtered.map(habit => (
-            <HabitCard
+          {filtered.map((habit, i) => (
+            <div
               key={habit.id}
-              habit={habit}
-              goalTitle={habit.goalId ? goalMap[habit.goalId]?.title : null}
-              onEdit={setEditing}
-              onDelete={deleteHabit}
-              onArchive={archiveHabit}
-              onRestore={restoreHabit}
-            />
+              draggable={filter === 'active'}
+              onDragStart={() => setDragFrom(i)}
+              onDragEnter={() => setDragOver(i)}
+              onDragOver={e => e.preventDefault()}
+              onDragEnd={handleDrop}
+              className={`transition-opacity ${dragFrom === i ? 'opacity-40' : ''}`}
+              style={dragOver === i && dragFrom !== i ? { boxShadow: '0 -2px 0 0 #3b82f6', borderRadius: '12px' } : {}}
+            >
+              <HabitCard
+                habit={habit}
+                goalTitle={habit.goalId ? goalMap[habit.goalId]?.title : null}
+                onEdit={setEditing}
+                onDelete={deleteHabit}
+                onArchive={archiveHabit}
+                onRestore={restoreHabit}
+                showDragHandle={filter === 'active'}
+              />
+            </div>
           ))}
         </div>
       )}

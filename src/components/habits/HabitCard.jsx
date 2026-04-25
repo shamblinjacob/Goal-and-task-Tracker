@@ -1,18 +1,29 @@
 import { useHabits } from '../../hooks/useHabits'
 import Icon from '../shared/Icon'
 import SwipeableItem from '../shared/SwipeableItem'
+import { vibrate } from '../../utils/haptics'
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
-function HabitInner({ habit, goalTitle, onEdit, onArchive, onRestore }) {
+function HabitInner({ habit, goalTitle, onEdit, onArchive, onRestore, showDragHandle }) {
   const { toggleToday, isCompletedToday, getStreak, getLast7 } = useHabits()
   const done   = isCompletedToday(habit)
   const streak = getStreak(habit)
   const last7  = getLast7(habit)
 
+  function handleToggle() {
+    vibrate(12)
+    toggleToday(habit.id)
+  }
+
   return (
     <div className={`bg-white rounded-xl border p-4 flex flex-col gap-3 transition-colors ${done ? 'border-green-200' : 'border-gray-100'} ${habit.archived ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-2">
+        {showDragHandle && (
+          <div className="mt-0.5 text-gray-300 cursor-grab active:cursor-grabbing shrink-0 touch-none" style={{ touchAction: 'none' }}>
+            <Icon name="grip-vertical" size={14} />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-gray-900 text-sm leading-snug">{habit.title}</h3>
           {habit.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{habit.description}</p>}
@@ -58,7 +69,7 @@ function HabitInner({ habit, goalTitle, onEdit, onArchive, onRestore }) {
         </div>
         {!habit.archived && (
           <button
-            onClick={() => toggleToday(habit.id)}
+            onClick={handleToggle}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all ${
               done ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -71,20 +82,25 @@ function HabitInner({ habit, goalTitle, onEdit, onArchive, onRestore }) {
   )
 }
 
-export default function HabitCard({ habit, goalTitle, onEdit, onDelete, onArchive, onRestore }) {
+export default function HabitCard({ habit, goalTitle, onEdit, onDelete, onArchive, onRestore, showDragHandle }) {
   const { toggleToday } = useHabits()
 
+  function handleToggle() {
+    vibrate(12)
+    toggleToday(habit.id)
+  }
+
   if (habit.archived) {
-    return <HabitInner habit={habit} goalTitle={goalTitle} onEdit={onEdit} onArchive={onArchive} onRestore={onRestore} />
+    return <HabitInner habit={habit} goalTitle={goalTitle} onEdit={onEdit} onArchive={onArchive} onRestore={onRestore} showDragHandle={false} />
   }
 
   return (
     <SwipeableItem
-      onComplete={() => toggleToday(habit.id)}
+      onComplete={handleToggle}
       onArchive={() => onArchive(habit.id)}
       completeLabel="Done"
     >
-      <HabitInner habit={habit} goalTitle={goalTitle} onEdit={onEdit} onArchive={onArchive} onRestore={onRestore} />
+      <HabitInner habit={habit} goalTitle={goalTitle} onEdit={onEdit} onArchive={onArchive} onRestore={onRestore} showDragHandle={showDragHandle} />
     </SwipeableItem>
   )
 }

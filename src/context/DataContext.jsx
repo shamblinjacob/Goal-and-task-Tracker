@@ -52,8 +52,14 @@ export function DataProvider({ children }) {
   useEffect(() => {
     if (!isFirebaseConfigured) return
 
-    const byDate = (a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')
-    const toList = snap => snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(byDate)
+    const sortItems = (a, b) => {
+      // If both have an explicit drag-order, use it (desc so higher = first)
+      if (a.order !== undefined && b.order !== undefined) return b.order - a.order
+      if (a.order !== undefined) return -1
+      if (b.order !== undefined) return  1
+      return (b.createdAt || '').localeCompare(a.createdAt || '')
+    }
+    const toList = snap => snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(sortItems)
 
     const unsubs = [
       onSnapshot(collection(db, 'workspaces', workspaceId, 'goals'),        snap => setGoals(toList(snap))),
@@ -96,7 +102,7 @@ export function DataProvider({ children }) {
     const goal = {
       id, title: data.title, description: data.description || '',
       category: data.category || 'other', targetDate: data.targetDate || null,
-      progress: 0, status: 'active', createdAt: new Date().toISOString(),
+      progress: 0, status: 'active', order: Date.now(), createdAt: new Date().toISOString(),
       lastCheckIn: null, checkIns: [],
       milestones: (data.milestones || []).filter(m => m.title?.trim()).map((m, i) => ({
         id: m.id || crypto.randomUUID(),
@@ -150,6 +156,16 @@ export function DataProvider({ children }) {
     return updateGoal(id, { status: 'active' })
   }
 
+  function reorderGoals(newArray) {
+    const base = Date.now()
+    const orderMap = Object.fromEntries(newArray.map((g, i) => [g.id, base - i * 1000]))
+    setGoals(prev => prev.map(g => orderMap[g.id] !== undefined ? { ...g, order: orderMap[g.id] } : g))
+    if (isFirebaseConfigured)
+      newArray.forEach((g, i) =>
+        updateDoc(doc(db, 'workspaces', workspaceId, 'goals', g.id), { order: base - i * 1000 }).catch(() => {})
+      )
+  }
+
   function toggleMilestone(goalId, milestoneId) {
     const goal = goals.find(g => g.id === goalId)
     if (!goal) return
@@ -183,6 +199,9 @@ export function DataProvider({ children }) {
       goalId: data.goalId || null, priority: data.priority || 'medium',
       dueDate: data.dueDate || null, completed: false, completedAt: null,
       category: data.category || 'other',
+      recurring: data.recurring || null,   // 'daily' | 'weekly' | 'monthly' | null
+      lastCompletedDate: null,
+      order: Date.now(),
       createdAt: new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'tasks', id), task)
@@ -200,9 +219,29 @@ export function DataProvider({ children }) {
     else setTasks(prev => prev.filter(t => t.id !== id))
   }
 
+  function isRecurringDone(task) {
+    if (!task.recurring || !task.lastCompletedDate) return false
+    const today = toDateString()
+    if (task.recurring === 'daily')   return task.lastCompletedDate === today
+    if (task.recurring === 'monthly') return task.lastCompletedDate.slice(0, 7) === today.slice(0, 7)
+    if (task.recurring === 'weekly') {
+      const now = new Date()
+      const day = now.getDay()
+      const start = new Date(now)
+      start.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
+      start.setHours(0, 0, 0, 0)
+      return task.lastCompletedDate >= toDateString(start)
+    }
+    return false
+  }
+
   function toggleTask(id) {
     const task = tasks.find(t => t.id === id)
     if (!task) return
+    if (task.recurring) {
+      const done = isRecurringDone(task)
+      return updateTask(id, { lastCompletedDate: done ? null : toDateString(), completed: false })
+    }
     return updateTask(id, {
       completed: !task.completed,
       completedAt: !task.completed ? new Date().toISOString() : null,
@@ -216,12 +255,23 @@ export function DataProvider({ children }) {
     return tasks.filter(t => t.goalId === goalId && !t.archived)
   }
 
+  function reorderTasks(newArray) {
+    const base = Date.now()
+    const orderMap = Object.fromEntries(newArray.map((t, i) => [t.id, base - i * 1000]))
+    setTasks(prev => prev.map(t => orderMap[t.id] !== undefined ? { ...t, order: orderMap[t.id] } : t))
+    if (isFirebaseConfigured)
+      newArray.forEach((t, i) =>
+        updateDoc(doc(db, 'workspaces', workspaceId, 'tasks', t.id), { order: base - i * 1000 }).catch(() => {})
+      )
+  }
+
   // -- Habits --
   async function addHabit(data) {
     const id = crypto.randomUUID()
     const habit = {
       id, title: data.title, description: data.description || '',
       goalId: data.goalId || null, completions: [],
+      order: Date.now(),
       createdAt: new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'habits', id), habit)
@@ -253,6 +303,16 @@ export function DataProvider({ children }) {
 
   function archiveHabit(id) { return updateHabit(id, { archived: true }) }
   function restoreHabit(id) { return updateHabit(id, { archived: false }) }
+
+  function reorderHabits(newArray) {
+    const base = Date.now()
+    const orderMap = Object.fromEntries(newArray.map((h, i) => [h.id, base - i * 1000]))
+    setHabits(prev => prev.map(h => orderMap[h.id] !== undefined ? { ...h, order: orderMap[h.id] } : h))
+    if (isFirebaseConfigured)
+      newArray.forEach((h, i) =>
+        updateDoc(doc(db, 'workspaces', workspaceId, 'habits', h.id), { order: base - i * 1000 }).catch(() => {})
+      )
+  }
 
   // -- Accounts (manual financial tracking) --
   async function addAccount(data) {
@@ -438,10 +498,11 @@ export function DataProvider({ children }) {
       addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal,
       toggleMilestone, logWeeklyEntry, deleteWeeklyEntry,
       archiveGoal, restoreGoal, CATEGORY_COLORS,
-      addTask, updateTask, deleteTask, toggleTask, getTasksForGoal,
-      archiveTask, restoreTask,
+      addTask, updateTask, deleteTask, toggleTask, getTasksForGoal, isRecurringDone,
+      archiveTask, restoreTask, reorderTasks,
       addHabit, updateHabit, deleteHabit, toggleToday, isCompletedToday, getStreak, getLast7,
-      archiveHabit, restoreHabit,
+      archiveHabit, restoreHabit, reorderHabits,
+      reorderGoals,
       addAccount, updateAccount, updateAccountBalance, deleteAccount,
       addTransaction, updateTransaction, deleteTransaction,
       addHolding, updateHolding, deleteHolding, addTrade, deleteTrade,

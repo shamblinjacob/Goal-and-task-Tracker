@@ -7,5 +7,6 @@ export function useTasks() {
     addTask: ctx.addTask, updateTask: ctx.updateTask, deleteTask: ctx.deleteTask,
     toggleTask: ctx.toggleTask, getTasksForGoal: ctx.getTasksForGoal,
     archiveTask: ctx.archiveTask, restoreTask: ctx.restoreTask,
+    reorderTasks: ctx.reorderTasks, isRecurringDone: ctx.isRecurringDone,
   }
 }

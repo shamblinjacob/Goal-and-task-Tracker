@@ -8,5 +8,6 @@ export function useHabits() {
     toggleToday: ctx.toggleToday, isCompletedToday: ctx.isCompletedToday,
     getStreak: ctx.getStreak, getLast7: ctx.getLast7,
     archiveHabit: ctx.archiveHabit, restoreHabit: ctx.restoreHabit,
+    reorderHabits: ctx.reorderHabits,
   }
 }

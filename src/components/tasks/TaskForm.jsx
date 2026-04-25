@@ -23,6 +23,7 @@ export default function TaskForm({ onSubmit, initial = {}, goals = [] }) {
     priority:    initial.priority    || 'medium',
     category:    initial.category    || 'other',
     dueDate:     initial.dueDate     || '',
+    recurring:   initial.recurring   || '',
   })
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
@@ -30,7 +31,7 @@ export default function TaskForm({ onSubmit, initial = {}, goals = [] }) {
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.title.trim()) return
-    onSubmit({ ...form, goalId: form.goalId || null })
+    onSubmit({ ...form, goalId: form.goalId || null, recurring: form.recurring || null })
   }
 
   // When linking a goal, default the category to the goal's category
@@ -88,14 +89,26 @@ export default function TaskForm({ onSubmit, initial = {}, goals = [] }) {
           </select>
         </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
-        <input
-          type="date"
-          value={form.dueDate}
-          onChange={e => set('dueDate', e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+          <input
+            type="date"
+            value={form.dueDate}
+            onChange={e => set('dueDate', e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Repeats</label>
+          <select value={form.recurring} onChange={e => set('recurring', e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+            <option value="">One-time</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
       </div>
       {goals.length > 0 && (
         <div>

@@ -3,6 +3,7 @@ import { useDataContext } from '../../context/DataContext'
 import { computeHoldingStats, computeAccountBalance } from '../../utils/financeUtils'
 import { toDateString, toMonthString } from '../../utils/dateUtils'
 import Icon from '../shared/Icon'
+import ConfirmDelete from '../shared/ConfirmDelete'
 import Modal from '../shared/Modal'
 import ProgressBar from '../shared/ProgressBar'
 import SpendingDonut from './SpendingDonut'
@@ -376,9 +377,7 @@ function TxRow({ tx, onEdit, onDelete }) {
         <button onClick={() => onEdit(tx)} className="p-1.5 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 cursor-pointer">
           <Icon name="edit" size={13} />
         </button>
-        <button onClick={() => onDelete(tx.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 cursor-pointer">
-          <Icon name="trash" size={13} />
-        </button>
+        <ConfirmDelete onConfirm={() => onDelete(tx.id)} size={13} />
       </div>
     </div>
   )
@@ -539,9 +538,7 @@ function HoldingRow({ holding, onEdit, onDelete, livePrice }) {
           <button onClick={() => onEdit(holding)} className="p-1.5 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 cursor-pointer">
             <Icon name="edit" size={13} />
           </button>
-          <button onClick={() => onDelete(holding.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 cursor-pointer">
-            <Icon name="trash" size={13} />
-          </button>
+          <ConfirmDelete onConfirm={() => onDelete(holding.id)} size={13} />
         </div>
       </div>
 
@@ -607,9 +604,7 @@ function AccountRow({ account, transactions, onEdit, onDelete, onMakePayment }) 
           <button onClick={() => onEdit(account)} className="p-1.5 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 cursor-pointer">
             <Icon name="edit" size={13} />
           </button>
-          <button onClick={() => onDelete(account.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 cursor-pointer">
-            <Icon name="trash" size={13} />
-          </button>
+          <ConfirmDelete onConfirm={() => onDelete(account.id)} size={13} />
         </div>
       </div>
     </div>
