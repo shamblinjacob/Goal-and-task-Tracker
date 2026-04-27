@@ -7,6 +7,7 @@ import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
 import HabitCheckIn from './HabitCheckIn'
 import WidgetPanel from './WidgetPanel'
+import Modal from '../shared/Modal'
 import WeeklyGoalCard from '../goals/WeeklyGoalCard'
 
 function greeting() {
@@ -128,12 +129,23 @@ export default function TodayPage({ onNavigate }) {
     .sort((a, b) => b.streak - a.streak)
     .slice(0, 3)
 
+  const [showSettings, setShowSettings] = useState(false)
+
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div>
-        <p className="text-xs text-gray-400 font-medium">{formatDate(new Date())}</p>
-        <h1 className="text-2xl font-bold text-gray-900 mt-0.5">{greeting()}</h1>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs text-gray-400 font-medium">{formatDate(new Date())}</p>
+          <h1 className="text-2xl font-bold text-gray-900 mt-0.5">{greeting()}</h1>
+        </div>
+        <button
+          onClick={() => setShowSettings(true)}
+          className="p-2 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors"
+          aria-label="Settings"
+        >
+          <Icon name="settings" size={18} />
+        </button>
       </div>
 
       {/* Daily snapshot */}
@@ -318,11 +330,13 @@ export default function TodayPage({ onNavigate }) {
         <NotifPanel habits={habits} tasks={tasks} goals={goals} />
       </section>
 
-      {/* Home-screen widget setup */}
-      <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Home-screen widget</h2>
-        <WidgetPanel />
-      </section>
+      {showSettings && (
+        <Modal title="Settings" onClose={() => setShowSettings(false)}>
+          <div className="space-y-4">
+            <WidgetPanel />
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
