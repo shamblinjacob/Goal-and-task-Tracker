@@ -5,6 +5,7 @@ import { useTasks } from './hooks/useTasks'
 import { useHabits } from './hooks/useHabits'
 import { toDateString } from './utils/dateUtils'
 import Icon from './components/shared/Icon'
+import VoiceCapture from './components/shared/VoiceCapture'
 import TodayPage    from './components/today/TodayPage'
 import GoalsPage    from './components/goals/GoalsPage'
 import TasksPage    from './components/tasks/TasksPage'
@@ -28,9 +29,23 @@ const FAB_PAGES = new Set(['tasks', 'goals', 'habits', 'finance'])
 function AppShell() {
   const [page, setPage] = useState('today')
   const [fabTrigger, setFabTrigger] = useState(0)
+  const [showVoice, setShowVoice]   = useState(false)
   const { goals } = useGoals()
-  const { tasks } = useTasks()
+  const { tasks, addTask } = useTasks()
   const { habits, isCompletedToday } = useHabits()
+
+  function handleVoiceSave(parsed) {
+    addTask({
+      title:       parsed.title,
+      description: '',
+      goalId:      null,
+      priority:    parsed.priority || 'medium',
+      category:    'other',
+      dueDate:     parsed.dueDate || '',
+      recurring:   null,
+    })
+    setShowVoice(false)
+  }
 
   const today = toDateString()
 
@@ -132,16 +147,27 @@ function AppShell() {
         </div>
       </main>
 
-      {/* Mobile FAB — floating add button on pages that support it */}
-      {FAB_PAGES.has(page) && (
+      {/* Mobile FABs — voice quick-add (always visible) + page-aware add */}
+      <div className="lg:hidden fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3">
         <button
-          onClick={() => setFabTrigger(n => n + 1)}
-          className="lg:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-blue-700 active:scale-95 transition-transform"
-          aria-label="Add"
+          onClick={() => setShowVoice(true)}
+          className="w-12 h-12 rounded-full bg-white border border-gray-200 text-gray-600 shadow-md flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+          aria-label="Voice add task"
         >
-          <Icon name="plus" size={26} strokeWidth={2.5} />
+          <Icon name="mic" size={20} />
         </button>
-      )}
+        {FAB_PAGES.has(page) && (
+          <button
+            onClick={() => setFabTrigger(n => n + 1)}
+            className="w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-blue-700 active:scale-95 transition-transform"
+            aria-label="Add"
+          >
+            <Icon name="plus" size={26} strokeWidth={2.5} />
+          </button>
+        )}
+      </div>
+
+      {showVoice && <VoiceCapture onSave={handleVoiceSave} onClose={() => setShowVoice(false)} />}
 
       {/* Mobile bottom tab bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100">
