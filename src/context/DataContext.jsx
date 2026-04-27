@@ -39,6 +39,8 @@ export function DataProvider({ children }) {
   const [accounts,     setAccounts]     = useState(() => isFirebaseConfigured ? [] : readLocal('accounts',     []))
   const [transactions, setTransactions] = useState(() => isFirebaseConfigured ? [] : readLocal('transactions', []))
   const [holdings,     setHoldings]     = useState(() => isFirebaseConfigured ? [] : readLocal('holdings',     []))
+  const [reviews,      setReviews]      = useState(() => isFirebaseConfigured ? [] : readLocal('reviews',      []))
+  const [journal,      setJournal]      = useState(() => isFirebaseConfigured ? [] : readLocal('journal',      []))
 
   // Persist to localStorage when not using Firebase
   useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('goals',        JSON.stringify(goals))        }, [goals])
@@ -47,6 +49,8 @@ export function DataProvider({ children }) {
   useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('accounts',     JSON.stringify(accounts))     }, [accounts])
   useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('transactions', JSON.stringify(transactions)) }, [transactions])
   useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('holdings',     JSON.stringify(holdings))     }, [holdings])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('reviews',      JSON.stringify(reviews))      }, [reviews])
+  useEffect(() => { if (!isFirebaseConfigured) localStorage.setItem('journal',      JSON.stringify(journal))      }, [journal])
 
   // Firebase real-time listeners
   useEffect(() => {
@@ -68,6 +72,8 @@ export function DataProvider({ children }) {
       onSnapshot(collection(db, 'workspaces', workspaceId, 'accounts'),     snap => setAccounts(toList(snap))),
       onSnapshot(collection(db, 'workspaces', workspaceId, 'transactions'), snap => setTransactions(toList(snap))),
       onSnapshot(collection(db, 'workspaces', workspaceId, 'holdings'),     snap => setHoldings(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'reviews'),      snap => setReviews(toList(snap))),
+      onSnapshot(collection(db, 'workspaces', workspaceId, 'journal'),      snap => setJournal(toList(snap))),
     ]
     return () => unsubs.forEach(u => u())
   }, [workspaceId])
@@ -490,6 +496,53 @@ export function DataProvider({ children }) {
     return days
   }
 
+  // ── Weekly reviews ──────────────────────────────────────────────────────
+  // Documents are keyed by week start (Monday's YYYY-MM-DD) so each week has
+  // exactly one review. setDoc with merge upserts on save.
+  async function saveWeeklyReview(weekId, data) {
+    const existing  = reviews.find(r => r.id === weekId)
+    const createdAt = existing?.createdAt || new Date().toISOString()
+    const review = { id: weekId, ...data, createdAt, updatedAt: new Date().toISOString() }
+    if (isFirebaseConfigured) {
+      await setDoc(doc(db, 'workspaces', workspaceId, 'reviews', weekId), review, { merge: true })
+    } else {
+      setReviews(prev => existing
+        ? prev.map(r => r.id === weekId ? { ...r, ...review } : r)
+        : [review, ...prev])
+    }
+  }
+
+  function getWeeklyReview(weekId) {
+    return reviews.find(r => r.id === weekId) || null
+  }
+
+  // ── Daily journal ───────────────────────────────────────────────────────
+  // One entry per day, keyed by YYYY-MM-DD. Stores the structured prompt
+  // answers + free text. setDoc with merge upserts so partial saves are fine.
+  async function saveJournalEntry(date, data) {
+    const existing  = journal.find(j => j.id === date)
+    const createdAt = existing?.createdAt || new Date().toISOString()
+    const entry = { id: date, date, ...data, createdAt, updatedAt: new Date().toISOString() }
+    if (isFirebaseConfigured) {
+      await setDoc(doc(db, 'workspaces', workspaceId, 'journal', date), entry, { merge: true })
+    } else {
+      setJournal(prev => existing
+        ? prev.map(j => j.id === date ? { ...j, ...entry } : j)
+        : [entry, ...prev])
+    }
+  }
+
+  async function deleteJournalEntry(date) {
+    if (isFirebaseConfigured) {
+      try { await deleteDoc(doc(db, 'workspaces', workspaceId, 'journal', date)) } catch {}
+    }
+    setJournal(prev => prev.filter(j => j.id !== date))
+  }
+
+  function getJournalEntry(date) {
+    return journal.find(j => j.id === date) || null
+  }
+
   // ── Widget token (for the iOS Scriptable home-screen widget) ────────────
   // Stored in a top-level `widget_tokens` collection mapping token → workspaceId
   // so the Netlify function can resolve the workspace without exposing the ID
@@ -534,6 +587,8 @@ export function DataProvider({ children }) {
       addTransaction, updateTransaction, deleteTransaction,
       addHolding, updateHolding, deleteHolding, addTrade, deleteTrade,
       widgetToken, generateWidgetToken, clearWidgetToken,
+      reviews, saveWeeklyReview, getWeeklyReview,
+      journal, saveJournalEntry, deleteJournalEntry, getJournalEntry,
     }}>
       {children}
     </DataContext.Provider>

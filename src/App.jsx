@@ -10,6 +10,7 @@ import TodayPage    from './components/today/TodayPage'
 import GoalsPage    from './components/goals/GoalsPage'
 import TasksPage    from './components/tasks/TasksPage'
 import HabitsPage   from './components/habits/HabitsPage'
+import JournalPage  from './components/journal/JournalPage'
 import InsightsPage from './components/insights/InsightsPage'
 import FinancePage  from './components/finance/FinancePage'
 import SyncPanel    from './components/shared/SyncPanel'
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'goals',    label: 'Goals',    icon: 'target' },
   { id: 'tasks',    label: 'Tasks',    icon: 'check-square' },
   { id: 'habits',   label: 'Habits',   icon: 'repeat' },
+  { id: 'journal',  label: 'Journal',  icon: 'book' },
   { id: 'finance',  label: 'Finance',  icon: 'dollar' },
   { id: 'insights', label: 'Insights', icon: 'bar-chart' },
 ]
@@ -142,6 +144,7 @@ function AppShell() {
           {page === 'goals'    && <GoalsPage fabTrigger={fabTrigger} />}
           {page === 'tasks'    && <TasksPage fabTrigger={fabTrigger} />}
           {page === 'habits'   && <HabitsPage fabTrigger={fabTrigger} />}
+          {page === 'journal'  && <JournalPage />}
           {page === 'finance'  && <FinancePage fabTrigger={fabTrigger} />}
           {page === 'insights' && <InsightsPage />}
         </div>
@@ -176,12 +179,12 @@ function AppShell() {
             <button
               key={tab.id}
               onClick={() => setPage(tab.id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 cursor-pointer relative transition-colors ${
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 cursor-pointer relative transition-colors min-w-0 ${
                 page === tab.id ? 'text-blue-600' : 'text-gray-400'
               }`}
             >
-              <Icon name={tab.icon} size={20} />
-              <span className="text-xs font-medium">{tab.label}</span>
+              <Icon name={tab.icon} size={18} />
+              <span className="text-[10px] font-medium whitespace-nowrap">{tab.label}</span>
               {badges[tab.id] && (
                 <span className="absolute top-2 right-1/4 w-4 h-4 flex items-center justify-center text-xs font-bold rounded-full bg-blue-500 text-white leading-none">
                   {badges[tab.id] > 9 ? '9+' : badges[tab.id]}
