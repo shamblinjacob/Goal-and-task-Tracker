@@ -6,6 +6,7 @@ import SwipeableItem from '../shared/SwipeableItem'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
 import HabitCheckIn from './HabitCheckIn'
+import WidgetPanel from './WidgetPanel'
 import WeeklyGoalCard from '../goals/WeeklyGoalCard'
 
 function greeting() {
@@ -315,6 +316,12 @@ export default function TodayPage({ onNavigate }) {
       <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Morning briefing</h2>
         <NotifPanel habits={habits} tasks={tasks} goals={goals} />
+      </section>
+
+      {/* Home-screen widget setup */}
+      <section>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Home-screen widget</h2>
+        <WidgetPanel />
       </section>
     </div>
   )

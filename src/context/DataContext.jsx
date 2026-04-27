@@ -490,6 +490,33 @@ export function DataProvider({ children }) {
     return days
   }
 
+  // ── Widget token (for the iOS Scriptable home-screen widget) ────────────
+  // Stored in a top-level `widget_tokens` collection mapping token → workspaceId
+  // so the Netlify function can resolve the workspace without exposing the ID
+  // in the widget URL.
+  const [widgetToken, setWidgetToken] = useState(() => localStorage.getItem('widgetToken') || '')
+
+  async function generateWidgetToken() {
+    const token = crypto.randomUUID().replace(/-/g, '')
+    if (isFirebaseConfigured) {
+      await setDoc(doc(db, 'widget_tokens', token), {
+        workspaceId,
+        createdAt: new Date().toISOString(),
+      })
+    }
+    localStorage.setItem('widgetToken', token)
+    setWidgetToken(token)
+    return token
+  }
+
+  async function clearWidgetToken() {
+    if (isFirebaseConfigured && widgetToken) {
+      try { await deleteDoc(doc(db, 'widget_tokens', widgetToken)) } catch {}
+    }
+    localStorage.removeItem('widgetToken')
+    setWidgetToken('')
+  }
+
   return (
     <DataContext.Provider value={{
       goals, tasks, habits, accounts, transactions, holdings,
@@ -506,6 +533,7 @@ export function DataProvider({ children }) {
       addAccount, updateAccount, updateAccountBalance, deleteAccount,
       addTransaction, updateTransaction, deleteTransaction,
       addHolding, updateHolding, deleteHolding, addTrade, deleteTrade,
+      widgetToken, generateWidgetToken, clearWidgetToken,
     }}>
       {children}
     </DataContext.Provider>
