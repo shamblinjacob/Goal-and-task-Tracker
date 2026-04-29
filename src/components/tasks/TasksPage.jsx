@@ -107,7 +107,7 @@ export default function TasksPage({ fabTrigger = 0 }) {
       ) : (
         <>
           <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               {FILTERS.map(f => {
                 const count = f.value === 'pending' ? pendingCount : f.value === 'completed' ? completedCount : archivedCount
                 return (
@@ -119,6 +119,16 @@ export default function TasksPage({ fabTrigger = 0 }) {
                   </button>
                 )
               })}
+              {filter === 'completed' && completedCount > 0 && (
+                <button
+                  onClick={() => {
+                    tasks.filter(t => !t.archived && !t.recurring && t.completed).forEach(t => archiveTask(t.id))
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors bg-white border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500"
+                >
+                  Archive all ({completedCount})
+                </button>
+              )}
             </div>
             {goals.length > 0 && (
               <select value={goalFilter} onChange={e => setGoalFilter(e.target.value)}

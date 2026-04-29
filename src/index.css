@@ -9,8 +9,6 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background: #f8fafc;
   color: #1e293b;
-  /* Block iOS double-tap-to-zoom + pinch-zoom (Safari ignores user-scalable=no
-     on regular websites, so this CSS is needed alongside the viewport meta) */
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
 }
@@ -18,3 +16,80 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* ── Dark mode ─────────────────────────────────────────────────────────────
+   Applied by toggling the `dark` class on <html>. Uses CSS overrides so we
+   don't have to add dark: variants to every Tailwind utility in every component.
+   ───────────────────────────────────────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+}
+.dark body {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+/* Backgrounds */
+.dark .bg-white        { background-color: #1e293b !important; }
+.dark .bg-gray-50      { background-color: #0f172a !important; }
+.dark .bg-gray-100     { background-color: #334155 !important; }
+.dark .bg-gray-200     { background-color: #475569 !important; }
+
+/* Borders */
+.dark .border-gray-100 { border-color: #334155 !important; }
+.dark .border-gray-200 { border-color: #475569 !important; }
+
+/* Text */
+.dark .text-gray-900   { color: #f1f5f9 !important; }
+.dark .text-gray-800   { color: #e2e8f0 !important; }
+.dark .text-gray-700   { color: #cbd5e1 !important; }
+.dark .text-gray-600   { color: #94a3b8 !important; }
+.dark .text-gray-500   { color: #6b7280 !important; }
+.dark .text-gray-400   { color: #475569 !important; }
+.dark .text-gray-300   { color: #374151 !important; }
+
+/* Blue accent surfaces */
+.dark .bg-blue-50      { background-color: #172554 !important; }
+.dark .border-blue-100 { border-color: #1d4ed8 !important; }
+.dark .border-blue-200 { border-color: #1e40af !important; }
+.dark .text-blue-900   { color: #bfdbfe !important; }
+.dark .text-blue-700   { color: #93c5fd !important; }
+
+/* Green accent surfaces */
+.dark .bg-green-50     { background-color: #052e16 !important; }
+.dark .border-green-200 { border-color: #166534 !important; }
+.dark .bg-green-100    { background-color: #14532d !important; }
+
+/* Amber accent surfaces */
+.dark .bg-amber-50     { background-color: #1c0a00 !important; }
+.dark .border-amber-300 { border-color: #92400e !important; }
+.dark .bg-amber-100    { background-color: #451a03 !important; }
+.dark .text-amber-500  { color: #fbbf24 !important; }
+
+/* Purple accent surfaces */
+.dark .bg-purple-50    { background-color: #2e1065 !important; }
+
+/* Red accent surfaces */
+.dark .bg-red-50       { background-color: #450a0a !important; }
+
+/* Form controls */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Shadow — lighten in dark mode so cards don't disappear */
+.dark .shadow-md  { box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; }
+.dark .shadow-lg  { box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important; }
+.dark .shadow-sm  { box-shadow: 0 1px 4px  rgba(0,0,0,0.4) !important; }
+

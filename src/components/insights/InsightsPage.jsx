@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useDataContext } from '../../context/DataContext'
 import { toDateString } from '../../utils/dateUtils'
+import { computeWeeklyStats, getReviewWeek, formatWeekRange } from '../../utils/weeklyReview'
 import Icon from '../shared/Icon'
 import ProgressBar from '../shared/ProgressBar'
 import GoalProgressChart from './GoalProgressChart'
@@ -13,6 +15,99 @@ const CATEGORY_META = {
   finance:  { label: 'Finance',  color: '#f59e0b' },
   learning: { label: 'Learning', color: '#ec4899' },
   other:    { label: 'Other',    color: '#6b7280' },
+}
+
+function WeeklyDigest({ tasks, habits, goals }) {
+  const [copied, setCopied] = useState(false)
+  const { weekStart, weekEnd, weekId } = getReviewWeek()
+  const stats = computeWeeklyStats({ tasks, habits, goals, weekStart, weekEnd })
+
+  function buildDigestText() {
+    const range = formatWeekRange(weekStart, weekEnd)
+    const lines = [`Weekly Digest — ${range}`, '']
+
+    if (stats.habitsTotal > 0) {
+      lines.push(`HABITS  ${stats.habitsDone}/${stats.habitsTotal} completions (${stats.habitPct}%)`)
+      if (stats.bestHabit)  lines.push(`  Best:        ${stats.bestHabit.habit.title} (${stats.bestHabit.done}/7)`)
+      if (stats.worstHabit && stats.worstHabit !== stats.bestHabit)
+        lines.push(`  Needs work:  ${stats.worstHabit.habit.title} (${stats.worstHabit.done}/7)`)
+      lines.push('')
+    }
+
+    lines.push(`TASKS   ${stats.tasksCompleted} completed this week`, '')
+
+    if (stats.goalMovement.length > 0) {
+      lines.push('GOALS')
+      for (const { goal, before, after, change } of stats.goalMovement) {
+        const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '→'
+        lines.push(`  ${arrow} ${goal.title}: ${before}% → ${after}%${change !== 0 ? ` (${change > 0 ? '+' : ''}${change})` : ''}`)
+      }
+      lines.push('')
+    }
+
+    lines.push('— GoalTracker')
+    return lines.join('\n')
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(buildDigestText()).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-800">Weekly digest</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{formatWeekRange(weekStart, weekEnd)}</p>
+        </div>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer transition-colors"
+        >
+          <Icon name={copied ? 'check' : 'copy'} size={12} />
+          {copied ? 'Copied!' : 'Copy text'}
+        </button>
+      </div>
+      <div className="space-y-2 text-sm">
+        {stats.habitsTotal > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-gray-400 w-14 shrink-0">Habits</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-green-400 rounded-full" style={{ width: `${stats.habitPct}%` }} />
+                </div>
+                <span className="text-xs text-gray-600 tabular-nums shrink-0">{stats.habitsDone}/{stats.habitsTotal} · {stats.habitPct}%</span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-gray-400 w-14 shrink-0">Tasks</span>
+          <span className="text-xs text-gray-700"><span className="font-semibold">{stats.tasksCompleted}</span> completed</span>
+        </div>
+        {stats.goalMovement.length > 0 && (
+          <div className="flex items-start gap-3">
+            <span className="text-xs font-semibold text-gray-400 w-14 shrink-0 pt-0.5">Goals</span>
+            <div className="space-y-1 flex-1">
+              {stats.goalMovement.slice(0, 3).map(({ goal, before, after, change }) => (
+                <div key={goal.id} className="flex items-center gap-2 text-xs">
+                  <span className="flex-1 text-gray-700 truncate">{goal.title}</span>
+                  <span className="text-gray-400 tabular-nums shrink-0">{before}% → {after}%</span>
+                  <span className={`font-semibold tabular-nums w-8 text-right shrink-0 ${change > 0 ? 'text-green-600' : change < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                    {change > 0 ? '+' : ''}{change || '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function InsightsPage() {
@@ -68,6 +163,11 @@ export default function InsightsPage() {
         <h1 className="text-xl font-bold text-gray-900">Insights</h1>
         <p className="text-gray-400 text-xs mt-0.5">Your trends and analytics</p>
       </div>
+
+      {/* Weekly digest */}
+      {(habits.length > 0 || tasks.length > 0 || goals.length > 0) && (
+        <WeeklyDigest tasks={tasks} habits={habits} goals={goals} />
+      )}
 
       {/* This week stats */}
       <div className="grid grid-cols-3 gap-2">

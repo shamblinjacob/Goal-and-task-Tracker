@@ -6,7 +6,7 @@ import { vibrate } from '../../utils/haptics'
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 function HabitInner({ habit, goalTitle, onEdit, onArchive, onRestore, showDragHandle }) {
-  const { toggleToday, isCompletedToday, getStreak, getLast7 } = useHabits()
+  const { toggleToday, toggleHabitDate, isCompletedToday, getStreak, getLast7 } = useHabits()
   const done   = isCompletedToday(habit)
   const streak = getStreak(habit)
   const last7  = getLast7(habit)
@@ -47,25 +47,42 @@ function HabitInner({ habit, goalTitle, onEdit, onArchive, onRestore, showDragHa
         </div>
       </div>
 
+      {/* 7-day bar — each day is tappable for retroactive logging */}
       <div className="flex items-end gap-1">
         {last7.map((day, i) => {
           const isToday = i === 6
           return (
             <div key={day.date} className="flex flex-col items-center gap-1 flex-1">
               <span className="text-xs text-gray-300">{DAY_LABELS[(new Date(day.date + 'T12:00:00')).getDay()]}</span>
-              <div className={`w-full rounded transition-colors ${isToday ? 'h-5' : 'h-4'} ${
-                day.done ? 'bg-green-400' : isToday ? 'bg-gray-100 ring-1 ring-gray-300 ring-offset-0' : 'bg-gray-100'
-              }`} />
+              <button
+                onClick={() => { vibrate(8); toggleHabitDate(habit.id, day.date) }}
+                title={`${day.done ? 'Undo' : 'Mark done'} ${day.date}`}
+                className={`w-full rounded transition-colors cursor-pointer ${isToday ? 'h-5' : 'h-4'} ${
+                  day.done
+                    ? 'bg-green-400 hover:bg-green-500'
+                    : isToday
+                    ? 'bg-gray-100 ring-1 ring-gray-300 hover:bg-gray-200'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              />
             </div>
           )
         })}
       </div>
+      <p className="text-[10px] text-gray-400 -mt-2">Tap any day to toggle</p>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-sm text-gray-500">
-          <Icon name="flame" size={14} className={streak > 0 ? 'text-orange-400' : 'text-gray-300'} />
-          <span className="font-semibold text-gray-700 tabular-nums">{streak}</span>
-          <span className="text-xs text-gray-400">day streak</span>
+        <div className="flex items-center gap-1.5">
+          {streak > 0 ? (
+            <>
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 text-amber-600 text-[10px] font-bold tabular-nums">
+                {streak > 99 ? '99+' : streak}
+              </span>
+              <span className="text-xs text-gray-400">day streak</span>
+            </>
+          ) : (
+            <span className="text-xs text-gray-400">No streak yet</span>
+          )}
         </div>
         {!habit.archived && (
           <button

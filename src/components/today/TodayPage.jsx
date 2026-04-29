@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDataContext } from '../../context/DataContext'
 import { useNotifications } from '../../hooks/useNotifications'
+import { useTheme } from '../../hooks/useTheme'
 import { toDateString } from '../../utils/dateUtils'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
@@ -109,8 +110,9 @@ export default function TodayPage({ onNavigate }) {
     goals, tasks, habits,
     toggleTask, archiveTask, addTask,
     toggleToday, archiveHabit, isCompletedToday, getStreak, getLast7, isRecurringDone,
-    getWeeklyReview,
+    getWeeklyReview, checkInGoal, getJournalEntry,
   } = useDataContext()
+  const { dark, toggleTheme } = useTheme()
 
   const [showAllFocus,    setShowAllFocus]    = useState(false)
   const [showReview,      setShowReview]      = useState(false)
@@ -144,6 +146,16 @@ export default function TodayPage({ onNavigate }) {
   const oneHabit = pickOneHabit(habits, getLast7, isCompletedToday)
   const oneGoal  = pickOneGoal(goals)
   const hasAnyFocus = oneTask || oneHabit || oneGoal
+
+  // Celebratory clear state
+  const allClear = activeHabits.length > 0
+    && habitPct === 100
+    && overdueTasks.length === 0
+    && dueTodayTasks.length === 0
+
+  // Journal status
+  const todayJournal = getJournalEntry(today)
+  const journalStarted = todayJournal && Object.values(todayJournal).some(v => typeof v === 'string' && v.trim())
 
   // Weekly review banner — show Sun-Wed of the week after a week ends, when
   // the user hasn't filled it in yet and hasn't dismissed it for that week.
@@ -211,6 +223,29 @@ export default function TodayPage({ onNavigate }) {
           <p className="text-xs text-blue-600">Complete habits &amp; add tasks by speaking</p>
         </div>
         <Icon name="chevron-right" size={14} className="text-blue-400 shrink-0" />
+      </button>
+
+      {/* Journal status */}
+      <button
+        onClick={() => onNavigate('journal')}
+        className={`w-full rounded-xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors text-left ${
+          journalStarted
+            ? 'bg-green-50 border border-green-200'
+            : 'bg-white border border-gray-100 hover:bg-gray-50'
+        }`}
+      >
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${journalStarted ? 'bg-green-100' : 'bg-gray-100'}`}>
+          <Icon name="book" size={16} className={journalStarted ? 'text-green-600' : 'text-gray-400'} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-semibold ${journalStarted ? 'text-green-900' : 'text-gray-700'}`}>
+            {journalStarted ? 'Journal written today ✓' : 'Journal — tap to reflect'}
+          </p>
+          <p className={`text-xs mt-0.5 ${journalStarted ? 'text-green-600' : 'text-gray-400'}`}>
+            {journalStarted ? 'Entry in progress' : 'Daily reflection keeps momentum'}
+          </p>
+        </div>
+        <Icon name="chevron-right" size={14} className={journalStarted ? 'text-green-400' : 'text-gray-300'} />
       </button>
 
       {/* Weekly review banner */}
@@ -373,9 +408,8 @@ export default function TodayPage({ onNavigate }) {
             })()}
 
             {oneGoal && (
-              <button
-                onClick={() => onNavigate('goals')}
-                className="w-full bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-3 cursor-pointer hover:bg-gray-50 transition-colors text-left"
+              <div
+                className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-3"
                 style={{ borderLeftWidth: 3, borderLeftColor: '#8b5cf6' }}
               >
                 <div className="mt-0.5 w-6 h-6 rounded-lg bg-purple-50 text-purple-500 shrink-0 flex items-center justify-center">
@@ -385,10 +419,24 @@ export default function TodayPage({ onNavigate }) {
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">The one goal</p>
                   <p className="text-base font-semibold text-gray-900 leading-snug mt-0.5">{oneGoal.goal.title}</p>
                   <p className="text-xs text-purple-500 mt-1">
-                    Stalled {oneGoal.daysIdle} days at {oneGoal.goal.progress}% — open to plan a next step.
+                    Stalled {oneGoal.daysIdle} days · currently {oneGoal.goal.progress}%
                   </p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <button
+                      onClick={() => checkInGoal(oneGoal.goal.id, Math.min(100, (oneGoal.goal.progress || 0) + 5), '')}
+                      className="text-xs px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-semibold cursor-pointer hover:bg-purple-100 transition-colors"
+                    >+5%</button>
+                    <button
+                      onClick={() => checkInGoal(oneGoal.goal.id, Math.min(100, (oneGoal.goal.progress || 0) + 10), '')}
+                      className="text-xs px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-semibold cursor-pointer hover:bg-purple-100 transition-colors"
+                    >+10%</button>
+                    <button
+                      onClick={() => onNavigate('goals')}
+                      className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >Full check-in →</button>
+                  </div>
                 </div>
-              </button>
+              </div>
             )}
 
             {focusTasks.length > 1 && (
@@ -434,6 +482,19 @@ export default function TodayPage({ onNavigate }) {
             )}
           </div>
         </section>
+      )}
+
+      {/* Celebratory all-clear state */}
+      {allClear && !hasAnyFocus && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <Icon name="check" size={20} className="text-green-600" strokeWidth={2.5} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-green-900">You're clear for today</p>
+            <p className="text-xs text-green-700 mt-0.5">All habits done, no urgent tasks. Great work — keep it up.</p>
+          </div>
+        </div>
       )}
 
       {/* Why you're doing this */}
@@ -485,6 +546,24 @@ export default function TodayPage({ onNavigate }) {
       {showSettings && (
         <Modal title="Settings" onClose={() => setShowSettings(false)}>
           <div className="space-y-4">
+            {/* Dark mode toggle */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <Icon name={dark ? 'sun' : 'moon'} size={15} className="text-gray-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Dark mode</p>
+                  <p className="text-xs text-gray-400">{dark ? 'On' : 'Off'} · follows your preference</p>
+                </div>
+              </div>
+              <button
+                onClick={toggleTheme}
+                className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${dark ? 'bg-blue-600' : 'bg-gray-200'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${dark ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
             <WidgetPanel />
           </div>
         </Modal>

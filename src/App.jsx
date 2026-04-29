@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { DataProvider } from './context/DataContext'
+import { useTheme } from './hooks/useTheme'
 import { useGoals } from './hooks/useGoals'
 import { useTasks } from './hooks/useTasks'
 import { useHabits } from './hooks/useHabits'
@@ -29,6 +30,7 @@ const TABS = [
 const FAB_PAGES = new Set(['tasks', 'goals', 'habits', 'finance'])
 
 function AppShell() {
+  useTheme()   // applies dark class on mount based on localStorage / system pref
   const [page, setPage] = useState('today')
   const [fabTrigger, setFabTrigger] = useState(0)
   const [showVoice, setShowVoice]   = useState(false)

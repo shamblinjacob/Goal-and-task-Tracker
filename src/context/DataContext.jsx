@@ -307,6 +307,17 @@ export function DataProvider({ children }) {
     })
   }
 
+  function toggleHabitDate(id, dateStr) {
+    const habit = habits.find(h => h.id === id)
+    if (!habit) return
+    const done = habit.completions.includes(dateStr)
+    return updateHabit(id, {
+      completions: done
+        ? habit.completions.filter(d => d !== dateStr)
+        : [...habit.completions, dateStr],
+    })
+  }
+
   function archiveHabit(id) { return updateHabit(id, { archived: true }) }
   function restoreHabit(id) { return updateHabit(id, { archived: false }) }
 
@@ -580,7 +591,7 @@ export function DataProvider({ children }) {
       archiveGoal, restoreGoal, CATEGORY_COLORS,
       addTask, updateTask, deleteTask, toggleTask, getTasksForGoal, isRecurringDone,
       archiveTask, restoreTask, reorderTasks,
-      addHabit, updateHabit, deleteHabit, toggleToday, isCompletedToday, getStreak, getLast7,
+      addHabit, updateHabit, deleteHabit, toggleToday, toggleHabitDate, isCompletedToday, getStreak, getLast7,
       archiveHabit, restoreHabit, reorderHabits,
       reorderGoals,
       addAccount, updateAccount, updateAccountBalance, deleteAccount,

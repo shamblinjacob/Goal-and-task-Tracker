@@ -20,32 +20,26 @@ function formatShort(dateStr) {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-// One prompt textarea — auto-grows to fit content
-function PromptField({ label, value, onChange, placeholder }) {
+function AutoTextarea({ value, onChange, placeholder, rows = 2, minHeight = 60 }) {
   const ref = useRef(null)
   useEffect(() => {
     if (!ref.current) return
     ref.current.style.height = 'auto'
     ref.current.style.height = ref.current.scrollHeight + 'px'
   }, [value])
-
   return (
-    <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
-      <textarea
-        ref={ref}
-        value={value || ''}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={2}
-        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
-        style={{ minHeight: 60 }}
-      />
-    </div>
+    <textarea
+      ref={ref}
+      value={value || ''}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
+      style={{ minHeight }}
+    />
   )
 }
 
-// Read-only view of a past entry — collapsed by default, expandable
 function PastEntry({ entry, onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
   const filledKeys = PROMPTS.filter(p => entry[p.key]?.trim()).map(p => p.key)
@@ -73,18 +67,18 @@ function PastEntry({ entry, onEdit, onDelete }) {
 
       {open && (
         <div className="px-4 pb-4 space-y-3 text-sm">
-          {PROMPTS.map(p => entry[p.key]?.trim() && (
-            <div key={p.key}>
-              <p className="text-xs font-semibold text-gray-500 mb-0.5">{p.label}</p>
-              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{entry[p.key]}</p>
-            </div>
-          ))}
           {entry.notes?.trim() && (
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-0.5">Notes</p>
               <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{entry.notes}</p>
             </div>
           )}
+          {PROMPTS.map(p => entry[p.key]?.trim() && (
+            <div key={p.key}>
+              <p className="text-xs font-semibold text-gray-500 mb-0.5">{p.label}</p>
+              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{entry[p.key]}</p>
+            </div>
+          ))}
           <div className="flex items-center gap-2 pt-1">
             <button onClick={onEdit} className="text-xs text-blue-600 hover:underline cursor-pointer flex items-center gap-1">
               <Icon name="edit" size={11} /> Edit
@@ -107,6 +101,7 @@ export default function JournalPage() {
   const [editingDate,   setEditingDate]   = useState(today)
   const [draft,         setDraft]         = useState(null)
   const [savedAt,       setSavedAt]       = useState(null)
+  const [showPrompts,   setShowPrompts]   = useState(false)
   const lastSavedRef    = useRef('')
 
   // Load the entry under edit whenever the date changes or the underlying
@@ -118,6 +113,9 @@ export default function JournalPage() {
       : { date: editingDate, wentWell: '', didntGo: '', grateful: '', tomorrow: '', notes: '' }
     setDraft(next)
     lastSavedRef.current = JSON.stringify(pickFields(next))
+    // Auto-expand prompts if any prompted fields already have content
+    const hasPromptContent = PROMPTS.some(p => next[p.key]?.trim())
+    setShowPrompts(hasPromptContent)
   }, [editingDate, journal])
 
   // Debounced auto-save
@@ -143,7 +141,7 @@ export default function JournalPage() {
     const activeHabits = habits.filter(h => !h.archived)
     const doneToday = activeHabits.filter(h => isCompletedToday(h)).length
     if (activeHabits.length > 0) {
-      if (doneToday === activeHabits.length) nudges.push({ icon: 'flame', text: `All ${activeHabits.length} habits done — what helped you stay consistent?` })
+      if (doneToday === activeHabits.length) nudges.push({ icon: 'check-circle', text: `All ${activeHabits.length} habits done — what helped you stay consistent?` })
       else if (doneToday === 0)              nudges.push({ icon: 'alert', text: 'No habits done today yet — anything blocking you?' })
       else                                   nudges.push({ icon: 'check', text: `${doneToday} of ${activeHabits.length} habits done — note what worked.` })
     }
@@ -157,6 +155,8 @@ export default function JournalPage() {
     const tasksCompletedToday = tasks.filter(t => t.completedAt && String(t.completedAt).slice(0, 10) === today).length
     if (tasksCompletedToday > 0) nudges.push({ icon: 'zap', text: `${tasksCompletedToday} task${tasksCompletedToday === 1 ? '' : 's'} completed today — celebrate the wins.` })
   }
+
+  const answeredCount = draft ? PROMPTS.filter(p => draft[p.key]?.trim()).length : 0
 
   // History (entries other than the one under edit)
   const past = journal
@@ -206,27 +206,49 @@ export default function JournalPage() {
         </div>
       )}
 
-      {/* Prompts */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
-        {PROMPTS.map(p => (
-          <PromptField
-            key={p.key}
-            label={p.label}
-            value={draft[p.key]}
-            placeholder={p.placeholder}
-            onChange={v => setField(p.key, v)}
-          />
-        ))}
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Anything else?</label>
-          <textarea
-            value={draft.notes || ''}
-            onChange={e => setField('notes', e.target.value)}
-            placeholder="Free-form notes, observations, ideas…"
-            rows={3}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
-          />
-        </div>
+      {/* Quick capture — notes field at the top */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-3">
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Today's note</label>
+        <AutoTextarea
+          value={draft.notes}
+          onChange={v => setField('notes', v)}
+          placeholder="What's on your mind? Just type — it saves automatically."
+          rows={3}
+          minHeight={72}
+        />
+      </div>
+
+      {/* Guided reflection — collapsible */}
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-4">
+        <button
+          onClick={() => setShowPrompts(p => !p)}
+          className="w-full flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors text-left"
+        >
+          <span className="text-xs font-semibold text-gray-600">Guided reflection</span>
+          <div className="flex items-center gap-2">
+            {!showPrompts && answeredCount > 0 && (
+              <span className="text-xs text-gray-400">{answeredCount} of {PROMPTS.length} answered</span>
+            )}
+            {!showPrompts && answeredCount === 0 && (
+              <span className="text-xs text-gray-400">4 prompts</span>
+            )}
+            <Icon name={showPrompts ? 'chevron-down' : 'chevron-right'} size={14} className="text-gray-400" />
+          </div>
+        </button>
+        {showPrompts && (
+          <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-4">
+            {PROMPTS.map(p => (
+              <div key={p.key}>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">{p.label}</label>
+                <AutoTextarea
+                  value={draft[p.key]}
+                  onChange={v => setField(p.key, v)}
+                  placeholder={p.placeholder}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Past entries */}
