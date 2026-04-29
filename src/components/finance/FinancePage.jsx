@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDataContext } from '../../context/DataContext'
 import { computeHoldingStats, computeAccountBalance } from '../../utils/financeUtils'
 import { toDateString, toMonthString } from '../../utils/dateUtils'
@@ -10,6 +10,8 @@ import SpendingDonut from './SpendingDonut'
 import CashFlowChart from './CashFlowChart'
 import NetWorthChart from './NetWorthChart'
 import AccountSparkline from './AccountSparkline'
+import { parseTransactionInput } from '../../utils/parseTransactionInput'
+import { vibrate } from '../../utils/haptics'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -611,6 +613,171 @@ function AccountRow({ account, transactions, onEdit, onDelete, onMakePayment }) 
   )
 }
 
+// ── Quick-add Transaction Strip ───────────────────────────────────────────────
+
+function QuickAddStrip({ onAdd, accounts }) {
+  const today     = toDateString()
+  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return toDateString(d) })()
+
+  const [type,      setType]      = useState('expense')
+  const [amount,    setAmount]    = useState('')
+  const [desc,      setDesc]      = useState('')
+  const [category,  setCategory]  = useState('food')
+  const [date,      setDate]      = useState(today)
+  const [accountId, setAccountId] = useState('')
+  const [listening, setListening] = useState(false)
+  const [hint,      setHint]      = useState('')
+
+  const recRef = useRef(null)
+
+  function startVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { setHint('Voice not supported in this browser.'); return }
+    const rec = new SR()
+    rec.continuous     = false
+    rec.interimResults = false
+    rec.lang           = 'en-US'
+    rec.onresult = (e) => {
+      const text   = e.results[0][0].transcript
+      const parsed = parseTransactionInput(text, accounts)
+      if (parsed) {
+        if (parsed.type)        setType(parsed.type)
+        if (parsed.amount)      setAmount(String(parsed.amount))
+        if (parsed.description) setDesc(parsed.description)
+        if (parsed.category)    setCategory(parsed.category)
+        if (parsed.accountId)   setAccountId(parsed.accountId)
+        setHint('')
+      } else {
+        setHint("Couldn't parse that — try filling in manually.")
+      }
+    }
+    rec.onend   = () => setListening(false)
+    rec.onerror = (e) => {
+      setListening(false)
+      if (e.error !== 'no-speech' && e.error !== 'aborted')
+        setHint(e.error === 'not-allowed' ? 'Microphone permission denied.' : `Error: ${e.error}`)
+    }
+    recRef.current = rec
+    try { rec.start(); setListening(true); vibrate(10) } catch (err) { setHint(String(err)) }
+  }
+
+  function handleSubmit(e) {
+    e?.preventDefault()
+    if (!amount || !desc.trim()) return
+    onAdd({
+      type,
+      date,
+      description: desc.trim(),
+      amount:      Math.abs(Number(amount)),
+      category,
+      accountId:   accountId || null,
+      toAccountId: null,
+      note:        '',
+      recurring:   false,
+    })
+    setAmount('')
+    setDesc('')
+    setCategory(type === 'income' ? 'paycheck' : 'food')
+    setDate(today)
+    setHint('')
+  }
+
+  const quickCats = type === 'income'
+    ? INCOME_CATS
+    : EXPENSE_CATS.filter(c => ['food','transport','shopping','health','entertainment','subscriptions','utilities','other'].includes(c.value))
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-blue-100 p-3 mb-3">
+      {/* Row 1: mic + amount + description + submit */}
+      <div className="flex items-center gap-2 mb-2.5">
+        <button type="button" onClick={startVoice}
+          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+            listening ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+          title='Say "I spent $12 at Chipotle on my credit card"'
+        >
+          <Icon name="mic" size={15} />
+        </button>
+        <div className="relative w-24 shrink-0">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+          <input
+            type="number" min="0.01" step="0.01"
+            value={amount} onChange={e => setAmount(e.target.value)}
+            placeholder="0.00"
+            className="w-full border border-gray-200 rounded-lg pl-6 pr-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+        <input
+          type="text"
+          value={desc} onChange={e => setDesc(e.target.value)}
+          placeholder="What for?"
+          className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <button type="submit" disabled={!amount || !desc.trim()}
+          className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 disabled:opacity-40 cursor-pointer hover:bg-blue-700 active:scale-95 transition-all"
+        >
+          <Icon name="plus" size={16} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* Row 2: type toggle + category chips */}
+      <div className="flex items-center gap-2">
+        <div className="flex p-0.5 bg-gray-100 rounded-lg shrink-0">
+          <button type="button" onClick={() => { setType('expense'); setCategory('food') }}
+            className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${type === 'expense' ? 'bg-white text-red-500 shadow-sm' : 'text-gray-400'}`}>
+            Exp
+          </button>
+          <button type="button" onClick={() => { setType('income'); setCategory('paycheck') }}
+            className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${type === 'income' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-400'}`}>
+            Inc
+          </button>
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {quickCats.map(cat => (
+            <button key={cat.value} type="button" onClick={() => setCategory(cat.value)}
+              className="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors whitespace-nowrap"
+              style={category === cat.value
+                ? { background: cat.color, color: '#fff' }
+                : { background: '#f3f4f6', color: '#6b7280' }
+              }>
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Row 3: date shortcuts + account selector */}
+      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-50">
+        <div className="flex gap-1">
+          <button type="button" onClick={() => setDate(today)}
+            className={`px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-colors ${date === today ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+            Today
+          </button>
+          <button type="button" onClick={() => setDate(yesterday)}
+            className={`px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-colors ${date === yesterday ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+            Yesterday
+          </button>
+        </div>
+        {accounts.length > 0 && (
+          <select value={accountId} onChange={e => setAccountId(e.target.value)}
+            className="ml-auto text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white text-gray-500 max-w-[9rem]">
+            <option value="">No account</option>
+            {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        )}
+      </div>
+
+      {listening && (
+        <p className="text-xs text-blue-500 mt-2 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse inline-block" />
+          Listening… e.g. "I spent $12 at Chipotle on my credit card"
+        </p>
+      )}
+      {hint && <p className="text-xs text-red-500 mt-1">{hint}</p>}
+    </form>
+  )
+}
+
 // ── Main FinancePage ──────────────────────────────────────────────────────────
 
 export default function FinancePage() {
@@ -713,8 +880,9 @@ export default function FinancePage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  function handleAddTx(data)  { addTransaction(data);             setShowTxForm(false)   }
-  function handleEditTx(data) { updateTransaction(editingTx.id, data); setEditingTx(null) }
+  function handleAddTx(data)    { addTransaction(data); setShowTxForm(false) }
+  function handleQuickAdd(data) { addTransaction(data) }
+  function handleEditTx(data)   { updateTransaction(editingTx.id, data); setEditingTx(null) }
 
   function handleAddHold(data)  { addHolding(data);             setShowHoldForm(false)   }
   function handleEditHold(data) { updateHolding(editingHold.id, data); setEditingHold(null) }
@@ -839,9 +1007,11 @@ export default function FinancePage() {
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Transactions</h2>
           <button onClick={() => setShowTxForm(true)}
             className="text-xs font-medium text-blue-600 hover:underline cursor-pointer flex items-center gap-1">
-            <Icon name="plus" size={12} /> Add
+            <Icon name="edit" size={12} /> Full form
           </button>
         </div>
+
+        <QuickAddStrip onAdd={handleQuickAdd} accounts={accounts} />
 
         {/* Filter tabs */}
         <div className="flex gap-1.5 mb-3">
