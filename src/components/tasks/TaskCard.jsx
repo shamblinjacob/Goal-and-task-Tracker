@@ -2,6 +2,7 @@ import Icon from '../shared/Icon'
 import SwipeableItem from '../shared/SwipeableItem'
 import ConfirmDelete from '../shared/ConfirmDelete'
 import { vibrate } from '../../utils/haptics'
+import { formatRelativeDate } from '../../utils/dateUtils'
 
 const PRIORITY_META = {
   high:   { color: '#ef4444', label: 'High' },
@@ -97,9 +98,15 @@ export default function TaskCard({ task, goalTitle, onToggle, onEdit, onDelete, 
             <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium truncate max-w-28">{goalTitle}</span>
           )}
           {task.dueDate && (
-            <span className={`text-xs flex items-center gap-1 ${isOverdue && !isDone ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+            <span className={`text-xs flex items-center gap-1 font-medium ${
+              isOverdue && !isDone ? 'text-red-500' :
+              days === 0  && !isDone ? 'text-amber-500' :
+              'text-gray-400 font-normal'
+            }`}>
               <Icon name="calendar" size={11} />
-              {isOverdue && !isDone ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `${days}d`}
+              {isOverdue && !isDone
+                ? `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} overdue`
+                : formatRelativeDate(task.dueDate)}
             </span>
           )}
         </div>

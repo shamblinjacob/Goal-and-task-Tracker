@@ -107,7 +107,8 @@ function NotifPanel({ habits, tasks, goals }) {
 // ── Today page ───────────────────────────────────────────────────────────────
 export default function TodayPage({ onNavigate }) {
   const {
-    goals, tasks, habits,
+    goals, tasks, habits, accounts, transactions, holdings, journal,
+    workspaceId,
     toggleTask, archiveTask, addTask,
     toggleToday, archiveHabit, isCompletedToday, getStreak, getLast7, isRecurringDone,
     getWeeklyReview, checkInGoal, getJournalEntry,
@@ -168,6 +169,37 @@ export default function TodayPage({ onNavigate }) {
   )
   const showReviewBanner = inWindow && !reviewSaved && !reviewDismissed
                             && (tasks.length > 0 || habits.length > 0 || goals.length > 0)
+
+  function exportAllData() {
+    const blob = new Blob([JSON.stringify({
+      exportedAt: new Date().toISOString(), workspaceId,
+      goals, tasks, habits, accounts, transactions, holdings, journal,
+    }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `goaltracker-backup-${today}.json`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportTransactionsCSV() {
+    const headers = ['Date','Type','Description','Amount','Category','Note','Recurring']
+    const rows = [...transactions]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(tx => [
+        tx.date, tx.type,
+        `"${(tx.description || '').replace(/"/g, '""')}"`,
+        tx.type === 'income' ? tx.amount : -tx.amount,
+        tx.category || '',
+        `"${(tx.note || '').replace(/"/g, '""')}"`,
+        tx.recurring ? (tx.recurring.freq || 'yes') : 'no',
+      ])
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `transactions-${today}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
 
   function dismissReview() {
     localStorage.setItem('reviewDismissed', reviewInfo.weekId)
@@ -565,6 +597,30 @@ export default function TodayPage({ onNavigate }) {
               </button>
             </div>
             <WidgetPanel />
+            {/* Data export */}
+            <div className="p-4 bg-white rounded-xl border border-gray-100">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <Icon name="download" size={15} className="text-gray-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Export data</p>
+                  <p className="text-xs text-gray-400">Back up or move your data</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={exportAllData}
+                  className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium cursor-pointer hover:bg-gray-200 transition-colors">
+                  All data (JSON)
+                </button>
+                {transactions.length > 0 && (
+                  <button onClick={exportTransactionsCSV}
+                    className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium cursor-pointer hover:bg-gray-200 transition-colors">
+                    Transactions (CSV)
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </Modal>
       )}
