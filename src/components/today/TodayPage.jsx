@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useDataContext } from '../../context/DataContext'
 import { useNotifications } from '../../hooks/useNotifications'
 import { toDateString } from '../../utils/dateUtils'
-import SwipeableItem from '../shared/SwipeableItem'
 import ProgressBar from '../shared/ProgressBar'
 import Icon from '../shared/Icon'
 import HabitCheckIn from './HabitCheckIn'
+import DailyVoiceCapture from './DailyVoiceCapture'
 import WidgetPanel from './WidgetPanel'
 import WeeklyReviewModal from './WeeklyReviewModal'
 import Modal from '../shared/Modal'
@@ -107,13 +107,14 @@ function NotifPanel({ habits, tasks, goals }) {
 export default function TodayPage({ onNavigate }) {
   const {
     goals, tasks, habits,
-    toggleTask, archiveTask,
+    toggleTask, archiveTask, addTask,
     toggleToday, archiveHabit, isCompletedToday, getStreak, getLast7, isRecurringDone,
     getWeeklyReview,
   } = useDataContext()
 
-  const [showAllFocus, setShowAllFocus]   = useState(false)
-  const [showReview,   setShowReview]     = useState(false)
+  const [showAllFocus,    setShowAllFocus]    = useState(false)
+  const [showReview,      setShowReview]      = useState(false)
+  const [showDailyVoice,  setShowDailyVoice]  = useState(false)
 
   const today = toDateString()
 
@@ -161,6 +162,25 @@ export default function TodayPage({ onNavigate }) {
     setReviewDismissed(true)
   }
 
+  function handleDailyVoiceSave({ habitIds, tasks: voiceTasks }) {
+    for (const id of habitIds) {
+      const h = habits.find(h => h.id === id)
+      if (h && !h.completions?.includes(today)) toggleToday(id)
+    }
+    for (const t of voiceTasks) {
+      addTask({
+        title:       t.title,
+        description: '',
+        goalId:      null,
+        priority:    t.priority || 'medium',
+        category:    'other',
+        dueDate:     t.dueDate || '',
+        recurring:   null,
+      })
+    }
+    setShowDailyVoice(false)
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -177,6 +197,21 @@ export default function TodayPage({ onNavigate }) {
           <Icon name="settings" size={18} />
         </button>
       </div>
+
+      {/* Voice check-in */}
+      <button
+        onClick={() => setShowDailyVoice(true)}
+        className="w-full bg-blue-50 border border-blue-100 rounded-xl p-3.5 flex items-center gap-3 cursor-pointer hover:bg-blue-100 active:bg-blue-200 transition-colors text-left"
+      >
+        <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+          <Icon name="mic" size={16} className="text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-blue-900">Voice check-in</p>
+          <p className="text-xs text-blue-600">Complete habits &amp; add tasks by speaking</p>
+        </div>
+        <Icon name="chevron-right" size={14} className="text-blue-400 shrink-0" />
+      </button>
 
       {/* Weekly review banner */}
       {showReviewBanner && (
@@ -223,9 +258,11 @@ export default function TodayPage({ onNavigate }) {
           <div className="grid grid-cols-3 gap-2">
             {topStreaks.map(({ habit, streak }) => (
               <div key={habit.id} className="bg-white rounded-xl border border-gray-100 p-3 flex flex-col items-center gap-1">
-                <Icon name="flame" size={20} className="text-orange-400" />
-                <span className="text-xl font-bold text-gray-900 tabular-nums leading-none">{streak}</span>
-                <span className="text-xs text-gray-400 text-center leading-tight line-clamp-2">{habit.title}</span>
+                <div className="w-11 h-11 rounded-full bg-amber-50 border-2 border-amber-300 flex items-center justify-center">
+                  <span className="text-lg font-bold text-amber-500 tabular-nums leading-none">{streak}</span>
+                </div>
+                <span className="text-[10px] text-gray-400 font-medium">days</span>
+                <span className="text-xs text-gray-500 text-center leading-tight line-clamp-2">{habit.title}</span>
               </div>
             ))}
           </div>
@@ -259,33 +296,26 @@ export default function TodayPage({ onNavigate }) {
             {activeHabits.map(habit => {
               const done = habit.completions?.includes(today)
               return (
-                <SwipeableItem
+                <button
                   key={habit.id}
-                  onComplete={() => toggleToday(habit.id)}
-                  onArchive={() => archiveHabit(habit.id)}
-                  completeLabel={done ? 'Undo' : 'Done'}
+                  onClick={() => toggleToday(habit.id)}
+                  className={`w-full text-left bg-white rounded-xl border px-4 py-3 flex items-center justify-between cursor-pointer active:bg-gray-50 transition-colors ${done ? 'border-green-200' : 'border-gray-100'}`}
                 >
-                  <div className={`bg-white rounded-xl border px-4 py-3 flex items-center justify-between transition-opacity ${done ? 'border-green-200' : 'border-gray-100'}`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${done ? 'border-green-400 bg-green-400' : 'border-gray-300'}`}>
-                        {done && <Icon name="check" size={10} className="text-white" strokeWidth={3} />}
-                      </div>
-                      <span className={`text-sm font-medium truncate ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                        {habit.title}
-                      </span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${done ? 'border-green-400 bg-green-400' : 'border-gray-300'}`}>
+                      {done && <Icon name="check" size={10} className="text-white" strokeWidth={3} />}
                     </div>
-                    <button
-                      onClick={() => toggleToday(habit.id)}
-                      className={`ml-3 shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${done ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    >
-                      {done ? 'Done' : 'Mark done'}
-                    </button>
+                    <span className={`text-sm font-medium truncate ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                      {habit.title}
+                    </span>
                   </div>
-                </SwipeableItem>
+                  <span className={`ml-3 shrink-0 text-xs px-2.5 py-1 rounded-lg font-medium ${done ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {done ? 'Done ✓' : 'Tap'}
+                  </span>
+                </button>
               )
             })}
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">Swipe right to complete · swipe left to archive</p>
         </section>
       )}
 
@@ -376,35 +406,28 @@ export default function TodayPage({ onNavigate }) {
                 {focusTasks.filter(t => t.id !== oneTask?.id).map(task => {
                   const isOverdue = task.dueDate && task.dueDate < today
                   return (
-                    <SwipeableItem
-                      key={task.id}
-                      onComplete={() => toggleTask(task.id)}
-                      onArchive={() => archiveTask(task.id)}
-                      completeLabel="Complete"
-                    >
-                      <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-start gap-3">
-                        <button
-                          onClick={() => toggleTask(task.id)}
-                          className="mt-0.5 w-5 h-5 rounded-full border-2 border-gray-300 hover:border-blue-400 shrink-0 cursor-pointer flex items-center justify-center"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 leading-snug">{task.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {isOverdue && (
-                              <span className="text-xs text-red-500 font-medium flex items-center gap-1">
-                                <Icon name="alert" size={11} />Overdue
-                              </span>
-                            )}
-                            {task.dueDate === today && !isOverdue && (
-                              <span className="text-xs text-amber-600 font-medium">Due today</span>
-                            )}
-                            {task.priority === 'high' && !isOverdue && task.dueDate !== today && (
-                              <span className="text-xs text-gray-500 font-medium">High priority</span>
-                            )}
-                          </div>
+                    <div key={task.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-start gap-3">
+                      <button
+                        onClick={() => toggleTask(task.id)}
+                        className="mt-0.5 w-5 h-5 rounded-full border-2 border-gray-300 hover:border-blue-400 shrink-0 cursor-pointer flex items-center justify-center"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 leading-snug">{task.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {isOverdue && (
+                            <span className="text-xs text-red-500 font-medium flex items-center gap-1">
+                              <Icon name="alert" size={11} />Overdue
+                            </span>
+                          )}
+                          {task.dueDate === today && !isOverdue && (
+                            <span className="text-xs text-amber-600 font-medium">Due today</span>
+                          )}
+                          {task.priority === 'high' && !isOverdue && task.dueDate !== today && (
+                            <span className="text-xs text-gray-500 font-medium">High priority</span>
+                          )}
                         </div>
                       </div>
-                    </SwipeableItem>
+                    </div>
                   )
                 })}
               </div>
@@ -467,7 +490,8 @@ export default function TodayPage({ onNavigate }) {
         </Modal>
       )}
 
-      {showReview && <WeeklyReviewModal onClose={() => setShowReview(false)} />}
+      {showReview      && <WeeklyReviewModal onClose={() => setShowReview(false)} />}
+      {showDailyVoice  && <DailyVoiceCapture habits={habits} onSave={handleDailyVoiceSave} onClose={() => setShowDailyVoice(false)} />}
     </div>
   )
 }

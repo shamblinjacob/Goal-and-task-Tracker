@@ -134,7 +134,7 @@ function AppShell() {
 
       {/* Main content — swipeable between tabs */}
       <main
-        className="flex-1 lg:ml-60 pb-20 lg:pb-0"
+        className="flex-1 lg:ml-60 pb-20 lg:pb-0 overflow-x-hidden"
         onTouchStart={onMainTouchStart}
         onTouchMove={onMainTouchMove}
         onTouchEnd={onMainTouchEnd}

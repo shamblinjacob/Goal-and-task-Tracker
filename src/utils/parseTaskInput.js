@@ -82,6 +82,11 @@ export function parseTaskInput(rawText) {
     }
   }
 
+  // Strip time-of-day qualifiers that linger after a date is extracted
+  if (dueDate) {
+    text = text.replace(/\b(night|morning|afternoon|evening)\b/gi, '')
+  }
+
   // Clean up dangling prepositions/articles left behind by phrase removal
   let title = text
     .replace(/\s+(by|on|at|for|due)\s*(?=$|,|\.)/gi, '')
