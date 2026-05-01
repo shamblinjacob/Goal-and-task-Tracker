@@ -555,6 +555,44 @@ export function DataProvider({ children }) {
     return journal.find(j => j.id === date) || null
   }
 
+  // ── Bulk import (round-trip JSON backup) ──────────────────────────────────
+  // Merges items from an exported JSON file into the current workspace.
+  // Items with an ID that already exists are SKIPPED (not overwritten) — this
+  // is the safe default for restoring a backup onto an existing install.
+  // Returns a summary { added: { goals, tasks, ... }, skipped: { ... } }.
+  async function importData(parsed) {
+    const summary = { added: {}, skipped: {} }
+    const collections = [
+      ['goals',        goals,        setGoals],
+      ['tasks',        tasks,        setTasks],
+      ['habits',       habits,       setHabits],
+      ['accounts',     accounts,     setAccounts],
+      ['transactions', transactions, setTransactions],
+      ['holdings',     holdings,     setHoldings],
+      ['journal',      journal,      setJournal],
+      ['reviews',      reviews,      setReviews],
+    ]
+    for (const [key, current, setter] of collections) {
+      const incoming = Array.isArray(parsed?.[key]) ? parsed[key] : []
+      const existingIds = new Set(current.map(item => item.id))
+      const toAdd = incoming.filter(item => item?.id && !existingIds.has(item.id))
+      summary.added[key]   = toAdd.length
+      summary.skipped[key] = incoming.length - toAdd.length
+
+      if (toAdd.length === 0) continue
+
+      if (isFirebaseConfigured) {
+        await Promise.all(toAdd.map(item =>
+          setDoc(doc(db, 'workspaces', workspaceId, key, item.id), item)
+            .catch(() => {})
+        ))
+      } else {
+        setter(prev => [...toAdd, ...prev])
+      }
+    }
+    return summary
+  }
+
   // ── Widget token (for the iOS Scriptable home-screen widget) ────────────
   // Stored in a top-level `widget_tokens` collection mapping token → workspaceId
   // so the Netlify function can resolve the workspace without exposing the ID
@@ -601,6 +639,7 @@ export function DataProvider({ children }) {
       widgetToken, generateWidgetToken, clearWidgetToken,
       reviews, saveWeeklyReview, getWeeklyReview,
       journal, saveJournalEntry, deleteJournalEntry, getJournalEntry,
+      importData,
     }}>
       {children}
     </DataContext.Provider>

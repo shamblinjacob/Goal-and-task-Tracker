@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useDataContext } from '../../context/DataContext'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useTheme } from '../../hooks/useTheme'
@@ -111,8 +111,11 @@ export default function TodayPage({ onNavigate }) {
     workspaceId,
     toggleTask, archiveTask, addTask,
     toggleToday, archiveHabit, isCompletedToday, getStreak, getLast7, isRecurringDone,
-    getWeeklyReview, checkInGoal, getJournalEntry,
+    getWeeklyReview, checkInGoal, getJournalEntry, importData,
   } = useDataContext()
+
+  const importInputRef = useRef(null)
+  const [importMsg, setImportMsg] = useState('')
   const { dark, toggleTheme } = useTheme()
 
   const [showAllFocus,    setShowAllFocus]    = useState(false)
@@ -179,6 +182,25 @@ export default function TodayPage({ onNavigate }) {
     const a = document.createElement('a')
     a.href = url; a.download = `goaltracker-backup-${today}.json`; a.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportMsg('')
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      const summary = await importData(parsed)
+      const totalAdded = Object.values(summary.added).reduce((s, n) => s + n, 0)
+      const totalSkipped = Object.values(summary.skipped).reduce((s, n) => s + n, 0)
+      setImportMsg(totalAdded === 0
+        ? `No new items — all ${totalSkipped} items already exist.`
+        : `Imported ${totalAdded} item${totalAdded === 1 ? '' : 's'}${totalSkipped > 0 ? ` (${totalSkipped} skipped — already existed)` : ''}.`)
+    } catch {
+      setImportMsg('Could not read that file. Make sure it\'s a JSON export from this app.')
+    }
+    e.target.value = ''
   }
 
   function exportTransactionsCSV() {
@@ -597,29 +619,46 @@ export default function TodayPage({ onNavigate }) {
               </button>
             </div>
             <WidgetPanel />
-            {/* Data export */}
+            {/* Data export & import */}
             <div className="p-4 bg-white rounded-xl border border-gray-100">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
                   <Icon name="download" size={15} className="text-gray-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">Export data</p>
-                  <p className="text-xs text-gray-400">Back up or move your data</p>
+                  <p className="text-sm font-semibold text-gray-800">Backup &amp; restore</p>
+                  <p className="text-xs text-gray-400">Export, then re-import to restore</p>
                 </div>
               </div>
               <div className="flex gap-2">
                 <button onClick={exportAllData}
                   className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium cursor-pointer hover:bg-gray-200 transition-colors">
-                  All data (JSON)
+                  Export JSON
+                </button>
+                <button onClick={() => importInputRef.current?.click()}
+                  className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium cursor-pointer hover:bg-gray-200 transition-colors">
+                  Import JSON
                 </button>
                 {transactions.length > 0 && (
                   <button onClick={exportTransactionsCSV}
                     className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium cursor-pointer hover:bg-gray-200 transition-colors">
-                    Transactions (CSV)
+                    Tx CSV
                   </button>
                 )}
               </div>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+              {importMsg && (
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed">{importMsg}</p>
+              )}
+              <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+                Import only adds items that don't already exist — safe to re-run.
+              </p>
             </div>
           </div>
         </Modal>

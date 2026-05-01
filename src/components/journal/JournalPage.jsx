@@ -4,6 +4,7 @@ import { toDateString } from '../../utils/dateUtils'
 import { pickOneGoal } from '../../utils/pickFocus'
 import Icon from '../shared/Icon'
 import ConfirmDelete from '../shared/ConfirmDelete'
+import VoiceDictateButton from '../shared/VoiceDictateButton'
 
 const PROMPTS = [
   { key: 'wentWell',  label: 'What went well today?',           placeholder: 'A win, a moment of pride, something that worked…' },
@@ -208,11 +209,14 @@ export default function JournalPage() {
 
       {/* Quick capture — notes field at the top */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 mb-3">
-        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Today's note</label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="block text-xs font-semibold text-gray-600">Today's note</label>
+          <VoiceDictateButton value={draft.notes} onChange={v => setField('notes', v)} title="Dictate notes" />
+        </div>
         <AutoTextarea
           value={draft.notes}
           onChange={v => setField('notes', v)}
-          placeholder="What's on your mind? Just type — it saves automatically."
+          placeholder="What's on your mind? Type or tap the mic to dictate."
           rows={3}
           minHeight={72}
         />
@@ -239,7 +243,10 @@ export default function JournalPage() {
           <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-4">
             {PROMPTS.map(p => (
               <div key={p.key}>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">{p.label}</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-600">{p.label}</label>
+                  <VoiceDictateButton value={draft[p.key]} onChange={v => setField(p.key, v)} title={`Dictate: ${p.label}`} />
+                </div>
                 <AutoTextarea
                   value={draft[p.key]}
                   onChange={v => setField(p.key, v)}
