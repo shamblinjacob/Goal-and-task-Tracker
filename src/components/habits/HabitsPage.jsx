@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useHabits } from '../../hooks/useHabits'
 import { useGoals } from '../../hooks/useGoals'
+import { useDataContext } from '../../context/DataContext'
 import HabitCard from './HabitCard'
 import HabitForm from './HabitForm'
 import Modal from '../shared/Modal'
@@ -13,8 +14,11 @@ const FILTERS = [
 ]
 
 export default function HabitsPage({ fabTrigger = 0 }) {
-  const { habits, addHabit, updateHabit, deleteHabit, isCompletedToday, archiveHabit, restoreHabit, reorderHabits } = useHabits()
+  const { habits: allHabits, addHabit, updateHabit, deleteHabit, isCompletedToday, archiveHabit, restoreHabit, reorderHabits } = useHabits()
   const { goals } = useGoals()
+  const { isMyItem } = useDataContext()
+
+  const habits = allHabits.filter(h => isMyItem(h))
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing]   = useState(null)
   const [filter, setFilter]     = useState('active')

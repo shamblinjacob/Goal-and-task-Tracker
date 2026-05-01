@@ -307,14 +307,14 @@ function GoalVelocity({ goals, days }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────
 export default function InsightsPage() {
-  const { goals, tasks, habits, journal } = useDataContext()
+  const { goals, tasks, habits, journal, isMyItem } = useDataContext()
   const [rangeKey, setRangeKey] = useState('30d')
   const range = RANGES.find(r => r.key === rangeKey) || RANGES[1]
   const days  = range.days
 
-  const activeGoals  = goals.filter(g => g.status === 'active')
-  const activeTasks  = tasks.filter(t => !t.archived)
-  const activeHabits = habits.filter(h => !h.archived)
+  const activeGoals  = goals.filter(g => g.status === 'active' && (isMyItem(g) || g.shared))
+  const activeTasks  = tasks.filter(t => !t.archived && isMyItem(t))
+  const activeHabits = habits.filter(h => !h.archived && isMyItem(h))
 
   const start = useMemo(() => startOfRange(days), [days])
 

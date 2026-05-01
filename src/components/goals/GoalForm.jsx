@@ -130,6 +130,7 @@ export default function GoalForm({ onSubmit, initial = {} }) {
     description: initial.description || '',
     category:    initial.category    || 'personal',
     targetDate:  initial.targetDate  || '',
+    shared:      !!initial.shared,
   })
   const [milestones, setMilestones] = useState(
     (initial.milestones || []).map(m => ({ ...m }))
@@ -310,6 +311,26 @@ export default function GoalForm({ onSubmit, initial = {} }) {
                 type="date" value={form.targetDate} onChange={e => set('targetDate', e.target.value)}
                 className={inputCls}
               />
+            </div>
+          </div>
+
+          {/* Share toggle */}
+          <div
+            onClick={() => set('shared', !form.shared)}
+            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors select-none ${
+              form.shared ? 'border-purple-200 bg-purple-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+            }`}
+          >
+            <div className="min-w-0">
+              <p className={`text-sm font-medium ${form.shared ? 'text-purple-900' : 'text-gray-700'}`}>
+                Share with partner
+              </p>
+              <p className={`text-xs mt-0.5 ${form.shared ? 'text-purple-600' : 'text-gray-400'}`}>
+                {form.shared ? 'Visible to all workspace members' : 'Only visible to you'}
+              </p>
+            </div>
+            <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ml-3 ${form.shared ? 'bg-purple-500' : 'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${form.shared ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
           </div>
 

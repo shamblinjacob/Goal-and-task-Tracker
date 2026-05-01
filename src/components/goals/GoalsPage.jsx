@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useGoals } from '../../hooks/useGoals'
 import { useTasks } from '../../hooks/useTasks'
+import { useDataContext } from '../../context/DataContext'
 import GoalCard from './GoalCard'
 import WeeklyGoalCard from './WeeklyGoalCard'
 import GoalForm from './GoalForm'
@@ -17,6 +18,7 @@ const FILTERS = [
 export default function GoalsPage({ fabTrigger = 0 }) {
   const { goals, addGoal, updateGoal, deleteGoal, setProgress, completeGoal, archiveGoal, restoreGoal, reorderGoals } = useGoals()
   const { getTasksForGoal } = useTasks()
+  const { isMyItem } = useDataContext()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing]   = useState(null)
   const [filter, setFilter]     = useState('active')
@@ -25,7 +27,7 @@ export default function GoalsPage({ fabTrigger = 0 }) {
 
   useEffect(() => { if (fabTrigger > 0) setShowForm(true) }, [fabTrigger])
 
-  const filtered       = goals.filter(g => g.status === filter)
+  const filtered       = goals.filter(g => g.status === filter && (isMyItem(g) || g.shared))
   const weeklyGoals    = filtered.filter(g => g.type === 'weekly')
   const regularGoals   = filtered.filter(g => g.type !== 'weekly')
 
@@ -64,7 +66,7 @@ export default function GoalsPage({ fabTrigger = 0 }) {
 
       <div className="flex gap-1.5 mb-5">
         {FILTERS.map(f => {
-          const count = goals.filter(g => g.status === f.value).length
+          const count = goals.filter(g => g.status === f.value && (isMyItem(g) || g.shared)).length
           return (
             <button
               key={f.value}

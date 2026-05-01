@@ -69,6 +69,7 @@ export default function GoalCard({ goal, taskCount, completedTaskCount, onEdit, 
               <span className="text-xs font-medium px-1.5 py-0.5 rounded" style={{ color: meta.color, background: `${meta.color}18` }}>
                 {meta.label}
               </span>
+              {goal.shared && <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-600">Shared</span>}
               {goal.status === 'completed' && <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700">Completed</span>}
               {goal.status === 'archived'  && <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">Archived</span>}
             </div>

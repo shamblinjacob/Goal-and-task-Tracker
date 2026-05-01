@@ -95,7 +95,7 @@ function PastEntry({ entry, onEdit, onDelete }) {
 export default function JournalPage() {
   const {
     journal, saveJournalEntry, deleteJournalEntry,
-    habits, goals, tasks, isCompletedToday, isRecurringDone,
+    habits, goals, tasks, isCompletedToday, isRecurringDone, isMyItem,
   } = useDataContext()
 
   const today           = toDateString()
@@ -108,13 +108,12 @@ export default function JournalPage() {
   // Load the entry under edit whenever the date changes or the underlying
   // entry updates (e.g. via Firestore sync from another device)
   useEffect(() => {
-    const existing = journal.find(j => j.date === editingDate)
+    const existing = journal.find(j => j.date === editingDate && isMyItem(j))
     const next = existing
       ? { wentWell: '', didntGo: '', grateful: '', tomorrow: '', notes: '', ...existing }
       : { date: editingDate, wentWell: '', didntGo: '', grateful: '', tomorrow: '', notes: '' }
     setDraft(next)
     lastSavedRef.current = JSON.stringify(pickFields(next))
-    // Auto-expand prompts if any prompted fields already have content
     const hasPromptContent = PROMPTS.some(p => next[p.key]?.trim())
     setShowPrompts(hasPromptContent)
   }, [editingDate, journal])
@@ -161,7 +160,7 @@ export default function JournalPage() {
 
   // History (entries other than the one under edit)
   const past = journal
-    .filter(j => j.date !== editingDate)
+    .filter(j => j.date !== editingDate && isMyItem(j))
     .sort((a, b) => b.date.localeCompare(a.date))
 
   if (!draft) return null

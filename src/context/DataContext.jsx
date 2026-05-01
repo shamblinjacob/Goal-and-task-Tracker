@@ -33,6 +33,29 @@ export function DataProvider({ children }) {
     return id
   })
 
+  // Per-device user ID — generated once, never changes, survives workspace switches.
+  // Primary user (workspace creator) defaults isPrimaryUser=true so their existing
+  // items (which have no userId field) remain visible to them.
+  const [userId] = useState(() => {
+    let id = localStorage.getItem('userId')
+    if (!id) {
+      id = generateCode()
+      localStorage.setItem('userId', id)
+    }
+    return id
+  })
+  const [isPrimaryUser, setIsPrimaryUser] = useState(() =>
+    localStorage.getItem('isPrimaryUser') !== 'false'
+  )
+
+  // item has no userId → legacy, belongs to primary user only
+  // item has userId   → belongs to that specific device
+  function isMyItem(item) {
+    if (!item) return false
+    if (!item.userId) return isPrimaryUser
+    return item.userId === userId
+  }
+
   const [goals,        setGoals]        = useState(() => isFirebaseConfigured ? [] : readLocal('goals',        []))
   const [tasks,        setTasks]        = useState(() => isFirebaseConfigured ? [] : readLocal('tasks',        []))
   const [habits,       setHabits]       = useState(() => isFirebaseConfigured ? [] : readLocal('habits',       []))
@@ -82,7 +105,9 @@ export function DataProvider({ children }) {
   function joinWorkspace(code) {
     const id = code.trim().toUpperCase()
     localStorage.setItem('workspaceId', id)
+    localStorage.setItem('isPrimaryUser', 'false')
     setWorkspaceIdState(id)
+    setIsPrimaryUser(false)
   }
 
   // -- Goals --
@@ -110,6 +135,7 @@ export function DataProvider({ children }) {
       category: data.category || 'other', targetDate: data.targetDate || null,
       progress: 0, status: 'active', order: Date.now(), createdAt: new Date().toISOString(),
       lastCheckIn: null, checkIns: [],
+      userId, shared: !!data.shared,
       milestones: (data.milestones || []).filter(m => m.title?.trim()).map((m, i) => ({
         id: m.id || crypto.randomUUID(),
         title: m.title,
@@ -208,6 +234,7 @@ export function DataProvider({ children }) {
       recurring: data.recurring || null,   // 'daily' | 'weekly' | 'monthly' | null
       lastCompletedDate: null,
       order: Date.now(),
+      userId,
       createdAt: new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'tasks', id), task)
@@ -258,7 +285,7 @@ export function DataProvider({ children }) {
   function restoreTask(id) { return updateTask(id, { archived: false }) }
 
   function getTasksForGoal(goalId) {
-    return tasks.filter(t => t.goalId === goalId && !t.archived)
+    return tasks.filter(t => t.goalId === goalId && !t.archived && isMyItem(t))
   }
 
   function reorderTasks(newArray) {
@@ -278,6 +305,7 @@ export function DataProvider({ children }) {
       id, title: data.title, description: data.description || '',
       goalId: data.goalId || null, completions: [],
       order: Date.now(),
+      userId,
       createdAt: new Date().toISOString(),
     }
     if (isFirebaseConfigured) await setDoc(doc(db, 'workspaces', workspaceId, 'habits', id), habit)
@@ -532,27 +560,32 @@ export function DataProvider({ children }) {
   // One entry per day, keyed by YYYY-MM-DD. Stores the structured prompt
   // answers + free text. setDoc with merge upserts so partial saves are fine.
   async function saveJournalEntry(date, data) {
-    const existing  = journal.find(j => j.id === date)
+    // Primary user keeps date as doc ID (backward compat with existing entries).
+    // Secondary users (partner) key by userId_date so entries never collide.
+    const docId    = isPrimaryUser ? date : `${userId}_${date}`
+    const existing = journal.find(j => j.id === docId)
     const createdAt = existing?.createdAt || new Date().toISOString()
-    const entry = { id: date, date, ...data, createdAt, updatedAt: new Date().toISOString() }
+    const entry = { id: docId, date, userId, ...data, createdAt, updatedAt: new Date().toISOString() }
     if (isFirebaseConfigured) {
-      await setDoc(doc(db, 'workspaces', workspaceId, 'journal', date), entry, { merge: true })
+      await setDoc(doc(db, 'workspaces', workspaceId, 'journal', docId), entry, { merge: true })
     } else {
       setJournal(prev => existing
-        ? prev.map(j => j.id === date ? { ...j, ...entry } : j)
+        ? prev.map(j => j.id === docId ? { ...j, ...entry } : j)
         : [entry, ...prev])
     }
   }
 
   async function deleteJournalEntry(date) {
+    const entry = journal.find(j => j.date === date && isMyItem(j))
+    const docId = entry?.id || date
     if (isFirebaseConfigured) {
-      try { await deleteDoc(doc(db, 'workspaces', workspaceId, 'journal', date)) } catch {}
+      try { await deleteDoc(doc(db, 'workspaces', workspaceId, 'journal', docId)) } catch {}
     }
-    setJournal(prev => prev.filter(j => j.id !== date))
+    setJournal(prev => prev.filter(j => j.id !== docId))
   }
 
   function getJournalEntry(date) {
-    return journal.find(j => j.id === date) || null
+    return journal.find(j => j.date === date && isMyItem(j)) || null
   }
 
   // ── Bulk import (round-trip JSON backup) ──────────────────────────────────
@@ -623,7 +656,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider value={{
       goals, tasks, habits, accounts, transactions, holdings,
-      workspaceId, isFirebaseConfigured,
+      workspaceId, userId, isPrimaryUser, isMyItem, isFirebaseConfigured,
       joinWorkspace,
       addGoal, updateGoal, deleteGoal, setProgress, completeGoal, checkInGoal,
       toggleMilestone, logWeeklyEntry, deleteWeeklyEntry,

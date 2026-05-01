@@ -24,8 +24,11 @@ function sortByOrder(a, b) {
 }
 
 export default function TasksPage({ fabTrigger = 0 }) {
-  const { tasks, addTask, updateTask, deleteTask, toggleTask, archiveTask, restoreTask, reorderTasks, isRecurringDone } = useTasks()
+  const { tasks: allTasks, addTask, updateTask, deleteTask, toggleTask, archiveTask, restoreTask, reorderTasks, isRecurringDone } = useTasks()
   const { goals } = useGoals()
+  const { isMyItem } = useDataContext()
+
+  const tasks = allTasks.filter(t => isMyItem(t))
   const [showForm, setShowForm]         = useState(false)
   const [editing, setEditing]           = useState(null)
   const [filter, setFilter]             = useState('pending')

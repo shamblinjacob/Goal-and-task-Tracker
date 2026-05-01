@@ -111,7 +111,7 @@ export default function TodayPage({ onNavigate }) {
     workspaceId,
     toggleTask, archiveTask, addTask,
     toggleToday, archiveHabit, isCompletedToday, getStreak, getLast7, isRecurringDone,
-    getWeeklyReview, checkInGoal, getJournalEntry, importData,
+    getWeeklyReview, checkInGoal, getJournalEntry, importData, isMyItem,
   } = useDataContext()
 
   const importInputRef = useRef(null)
@@ -124,17 +124,18 @@ export default function TodayPage({ onNavigate }) {
 
   const today = toDateString()
 
-  const activeHabits   = habits.filter(h => !h.archived)
+  const activeHabits   = habits.filter(h => !h.archived && isMyItem(h))
   const doneHabits     = activeHabits.filter(h => h.completions?.includes(today))
   const pendingHabits  = activeHabits.filter(h => !h.completions?.includes(today))
 
-  const dueTodayTasks  = tasks.filter(t => !t.completed && !t.archived && t.dueDate === today)
-  const overdueTasks   = tasks.filter(t => !t.completed && !t.archived && t.dueDate && t.dueDate < today)
-  const highPriTasks   = tasks.filter(t => !t.completed && !t.archived && t.priority === 'high' && (!t.dueDate || t.dueDate > today))
+  const myTasks        = tasks.filter(t => isMyItem(t))
+  const dueTodayTasks  = myTasks.filter(t => !t.completed && !t.archived && t.dueDate === today)
+  const overdueTasks   = myTasks.filter(t => !t.completed && !t.archived && t.dueDate && t.dueDate < today)
+  const highPriTasks   = myTasks.filter(t => !t.completed && !t.archived && t.priority === 'high' && (!t.dueDate || t.dueDate > today))
   const focusTasks     = [...overdueTasks, ...dueTodayTasks, ...highPriTasks]
 
-  const weeklyGoals    = goals.filter(g => g.status === 'active' && g.type === 'weekly')
-  const activeGoals    = goals.filter(g => g.status === 'active' && g.type !== 'weekly' && g.description)
+  const weeklyGoals    = goals.filter(g => g.status === 'active' && g.type === 'weekly' && (isMyItem(g) || g.shared))
+  const activeGoals    = goals.filter(g => g.status === 'active' && g.type !== 'weekly' && g.description && (isMyItem(g) || g.shared))
   const habitPct       = activeHabits.length ? Math.round((doneHabits.length / activeHabits.length) * 100) : 0
 
   const topStreaks = activeHabits
@@ -145,10 +146,11 @@ export default function TodayPage({ onNavigate }) {
 
   const [showSettings, setShowSettings] = useState(false)
 
-  // Smart Today picks
-  const oneTask  = pickOneTask(tasks, today, isRecurringDone)
-  const oneHabit = pickOneHabit(habits, getLast7, isCompletedToday)
-  const oneGoal  = pickOneGoal(goals)
+  // Smart Today picks — scoped to this user's items + shared goals
+  const visibleGoals = goals.filter(g => isMyItem(g) || g.shared)
+  const oneTask  = pickOneTask(myTasks, today, isRecurringDone)
+  const oneHabit = pickOneHabit(activeHabits, getLast7, isCompletedToday)
+  const oneGoal  = pickOneGoal(visibleGoals)
   const hasAnyFocus = oneTask || oneHabit || oneGoal
 
   // Celebratory clear state
